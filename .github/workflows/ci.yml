@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked --group dev
+      - run: uv run --locked pytest -q --cov --cov-report=term-missing
+      - run: pip install 'cfn-lint==1.58.0' && cfn-lint deploy/aws/foundation.yaml deploy/aws/data.yaml deploy/aws/services.yaml
+
+  test-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: fnol
+          POSTGRES_PASSWORD: fnol
+          POSTGRES_DB: fnol
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fnol -d fnol"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      FNOL_DATABASE_URL: postgresql://fnol:fnol@localhost:5432/fnol
+      FNOL_PG_NAMESPACE: isolate
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked --group dev --group postgres
+      - run: uv run --locked --group dev --group postgres pytest -q --cov --cov-report=term-missing

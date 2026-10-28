@@ -1,0 +1,67 @@
+{
+  "name": "fnol-shadow-summary",
+  "description": "Light guardrail for the shadow narrative only. Trace is not requested on the model call.",
+  "blockedInputMessaging": "The summary request was blocked.",
+  "blockedOutputsMessaging": "Summary withheld: model output was not a handler summary.",
+  "topicPolicyConfig": {
+    "topicsConfig": [
+      {
+        "name": "coverage-decision",
+        "definition": "Deciding whether a loss is covered, not covered, or payable.",
+        "examples": [
+          "Coverage is approved for this collision.",
+          "This loss is not covered."
+        ],
+        "type": "DENY",
+        "inputAction": "BLOCK",
+        "outputAction": "BLOCK",
+        "inputEnabled": true,
+        "outputEnabled": true
+      },
+      {
+        "name": "claim-denial",
+        "definition": "Approving, denying, or closing a claim.",
+        "examples": [
+          "The claim is denied.",
+          "The claim is approved."
+        ],
+        "type": "DENY",
+        "inputAction": "BLOCK",
+        "outputAction": "BLOCK",
+        "inputEnabled": true,
+        "outputEnabled": true
+      },
+      {
+        "name": "claim-payment",
+        "definition": "Authorizing a payment, a settlement amount, or a financial reserve.",
+        "examples": [
+          "We will pay the repair.",
+          "Set the reserve at 5000."
+        ],
+        "type": "DENY",
+        "inputAction": "BLOCK",
+        "outputAction": "BLOCK",
+        "inputEnabled": true,
+        "outputEnabled": true
+      }
+    ]
+  },
+  "wordPolicyConfig": {
+    "wordsConfig": [
+      {
+        "text": "private_token",
+        "inputAction": "BLOCK",
+        "outputAction": "BLOCK",
+        "inputEnabled": true,
+        "outputEnabled": true
+      },
+      {
+        "text": "SYNTHETIC-PRIVATE-",
+        "inputAction": "BLOCK",
+        "outputAction": "BLOCK",
+        "inputEnabled": true,
+        "outputEnabled": true
+      }
+    ]
+  }
+}

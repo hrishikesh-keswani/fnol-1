@@ -1,0 +1,24 @@
+# Local Grafana for the FNOL dashboards. Start it with ./up.sh, which opens the
+# Session Manager tunnel to fnol-postgres and keeps short-lived AWS credentials
+# in aws/credentials.json; do not run `docker compose up` directly.
+services:
+  grafana:
+    image: grafana/grafana:12.2.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      FNOL_BI_PASSWORD: ${FNOL_BI_PASSWORD:?run ./up.sh}
+      AWS_CONFIG_FILE: /etc/grafana/aws/config
+      AWS_SDK_LOAD_CONFIG: "1"
+      AWS_REGION: us-east-1
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/fnol-executive.json
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/etc/grafana/dashboards:ro
+      - ./aws:/etc/grafana/aws:ro
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  grafana-data:

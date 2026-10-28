@@ -1,0 +1,515 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  FNOL PostgreSQL in the existing VPC. This stack does not create a VPC,
+  subnets, NAT, or task security group, and it does not modify the SQL Server
+  instance named fnol. It creates a DB subnet group on the fnol-db subnets,
+  a security group that allows 5432 only from the task security group, and a
+  private encrypted Postgres instance with IAM authentication and a managed
+  master secret. It adds one egress rule on the existing task security group:
+  TCP 5432 to that Postgres security group only. VPC endpoints stay off unless
+  CreateVpcEndpoints is true.
+
+Parameters:
+  EvidenceKeyArn:
+    Type: String
+    AllowedPattern: "arn:aws:kms:us-east-1:[0-9]{12}:key/.+"
+    Description: KeyArn output from deploy/aws/foundation.yaml.
+  PermissionsBoundaryArn:
+    Type: String
+    Default: ""
+    Description: Optional foundation TaskBoundary ARN for the migrate role.
+  VpcId:
+    Type: String
+    Default: vpc-05da07556a583ba88
+    AllowedPattern: "vpc-[0-9a-f]+"
+    Description: Existing FNOL VPC (10.43.0.0/16). This stack does not create one.
+  DbSubnetA:
+    Type: String
+    Default: subnet-0c107464e812ac7cf
+    AllowedPattern: "subnet-[0-9a-f]+"
+    Description: fnol-db-a in us-east-1a (10.43.1.0/24).
+  DbSubnetB:
+    Type: String
+    Default: subnet-021865e74ab89de80
+    AllowedPattern: "subnet-[0-9a-f]+"
+    Description: fnol-db-b in us-east-1b (10.43.2.0/24).
+  TaskSecurityGroupId:
+    Type: String
+    Default: sg-0902a6085d45388f5
+    AllowedPattern: "sg-[0-9a-f]+"
+    Description: Existing fnol-tasks security group. Ingress 5432 is allowed only from this group, and this stack adds egress 5432 from it to the Postgres security group.
+  VpcCidr:
+    Type: String
+    Default: 10.43.0.0/16
+    Description: Used only to keep the database security group egress inside the VPC.
+  AppSubnetA:
+    Type: String
+    Default: subnet-00eea3b5317c5e492
+    AllowedPattern: "subnet-[0-9a-f]+"
+    Description: fnol-private-a. Used only when CreateVpcEndpoints is true.
+  AppSubnetB:
+    Type: String
+    Default: subnet-02cadb526cc74c182
+    AllowedPattern: "subnet-[0-9a-f]+"
+    Description: fnol-private-b. Used only when CreateVpcEndpoints is true.
+  AppRouteTableId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|rtb-[0-9a-f]+"
+    Description: App subnet route table. Required only when CreateVpcEndpoints is true.
+  DbInstanceIdentifier:
+    Type: String
+    Default: fnol-postgres
+    AllowedPattern: "[a-z][a-z0-9-]{0,30}"
+    Description: Must not be fnol. That identifier is the existing SQL Server instance.
+  DbName:
+    Type: String
+    Default: fnol
+    AllowedPattern: "[a-z][a-z0-9_]{0,30}"
+  MasterUsername:
+    Type: String
+    Default: fnol_admin
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9_]{0,15}"
+  DbInstanceClass:
+    Type: String
+    Default: db.t4g.micro
+  EngineVersion:
+    Type: String
+    Default: "16.8"
+    Description: RDS PostgreSQL version. Confirm the current 16.x minor before deploy.
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+    MinValue: 20
+    MaxValue: 200
+  MultiAZ:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+  BackupRetentionDays:
+    Type: Number
+    Default: 7
+    MinValue: 7
+    MaxValue: 35
+  DeletionProtection:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+  CreateVpcEndpoints:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >
+      Off by default. The app subnets already reach AWS APIs through NAT
+      nat-0563fc6ab85404d39. Set true only to add a gateway endpoint for S3
+      and interface endpoints for Secrets Manager, KMS, CloudWatch Logs, and ECR.
+
+Rules:
+  LeaveTheSqlServerAlone:
+    Assertions:
+      - Assert: !Not [!Equals [!Ref DbInstanceIdentifier, "fnol"]]
+        AssertDescription: >
+          DbInstanceIdentifier fnol is the existing SQL Server instance.
+          This stack must not adopt or replace it. Use fnol-postgres.
+  EndpointsNeedARouteTable:
+    RuleCondition: !Equals [!Ref CreateVpcEndpoints, "true"]
+    Assertions:
+      - Assert: !Not [!Equals [!Ref AppRouteTableId, ""]]
+        AssertDescription: AppRouteTableId is required when CreateVpcEndpoints is true.
+
+Conditions:
+  UseMultiAZ: !Equals [!Ref MultiAZ, "true"]
+  ProtectDatabase: !Equals [!Ref DeletionProtection, "true"]
+  CreateEndpoints: !Equals [!Ref CreateVpcEndpoints, "true"]
+  HasBoundary: !Not [!Equals [!Ref PermissionsBoundaryArn, ""]]
+
+Resources:
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: fnol-postgres
+      GroupDescription: FNOL Postgres accepts 5432 only from fnol-tasks
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref TaskSecurityGroupId
+          Description: Postgres from FNOL tasks
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref VpcCidr
+          Description: Egress stays inside the VPC
+      Tags:
+        - Key: Name
+          Value: fnol-postgres
+
+  TaskPostgresEgress:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      GroupId: !Ref TaskSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      DestinationSecurityGroupId: !Ref DatabaseSecurityGroup
+      Description: TCP 5432 to FNOL Postgres only
+
+  EndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Condition: CreateEndpoints
+    Properties:
+      GroupDescription: HTTPS from FNOL tasks to interface endpoints
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref TaskSecurityGroupId
+          Description: Tasks call AWS APIs
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref VpcCidr
+          Description: Endpoint replies stay inside the VPC
+      Tags:
+        - Key: Name
+          Value: fnol-endpoints
+
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: fnol-postgres
+      DBSubnetGroupDescription: FNOL db subnets for PostgreSQL
+      SubnetIds:
+        - !Ref DbSubnetA
+        - !Ref DbSubnetB
+      Tags:
+        - Key: Name
+          Value: fnol-postgres
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Ref DbInstanceIdentifier
+      DBName: !Ref DbName
+      Engine: postgres
+      EngineVersion: !Ref EngineVersion
+      DBInstanceClass: !Ref DbInstanceClass
+      AllocatedStorage: !Ref AllocatedStorage
+      StorageType: gp3
+      StorageEncrypted: true
+      KmsKeyId: !Ref EvidenceKeyArn
+      MasterUsername: !Ref MasterUsername
+      ManageMasterUserPassword: true
+      MasterUserSecret:
+        KmsKeyId: !Ref EvidenceKeyArn
+      EnableIAMDatabaseAuthentication: true
+      PubliclyAccessible: false
+      MultiAZ: !If [UseMultiAZ, true, false]
+      BackupRetentionPeriod: !Ref BackupRetentionDays
+      PreferredBackupWindow: "07:00-08:00"
+      PreferredMaintenanceWindow: "sun:09:00-sun:10:00"
+      CopyTagsToSnapshot: true
+      DeletionProtection: !If [ProtectDatabase, true, false]
+      AutoMinorVersionUpgrade: true
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+      EnableCloudwatchLogsExports:
+        - postgresql
+        - upgrade
+      Tags:
+        - Key: Name
+          Value: fnol-postgres
+
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref AppRouteTableId
+
+  SecretsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.secretsmanager
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref AppSubnetA
+        - !Ref AppSubnetB
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  KmsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.kms
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref AppSubnetA
+        - !Ref AppSubnetB
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  LogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.logs
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref AppSubnetA
+        - !Ref AppSubnetB
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  EcrApiEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ecr.api
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref AppSubnetA
+        - !Ref AppSubnetB
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  EcrDkrEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Condition: CreateEndpoints
+    Properties:
+      VpcId: !Ref VpcId
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ecr.dkr
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref AppSubnetA
+        - !Ref AppSubnetB
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  MigrateRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: fnol-migrate
+      Path: /fnol/
+      PermissionsBoundary: !If
+        - HasBoundary
+        - !Ref PermissionsBoundaryArn
+        - !Ref AWS::NoValue
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                aws:SourceArn: !Sub arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:*
+      Policies:
+        - PolicyName: connect-as-migrate
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ConnectAsMigrate
+                Effect: Allow
+                Action: rds-db:connect
+                Resource: !Sub
+                  - arn:aws:rds-db:${Region}:${Account}:dbuser:${DbResource}/fnol_migrate
+                  - Region: !Ref AWS::Region
+                    Account: !Ref AWS::AccountId
+                    DbResource: !GetAtt Database.DbiResourceId
+        # Bootstrap only. 008 creates fnol_migrate, so the first apply of that
+        # file still signs in as the master user. The task definition does not
+        # set FNOL_DB_SECRET_ARN; a one-time override does. The secret has no
+        # host, and the code uses FNOL_RDS_HOST. Drop this policy after 008
+        # has been applied. Creating tables is not an IAM action.
+        - PolicyName: read-master-secret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadMasterSecret
+                Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                  - secretsmanager:DescribeSecret
+                Resource: !GetAtt Database.MasterUserSecret.SecretArn
+              - Sid: DecryptMasterSecret
+                Effect: Allow
+                Action: kms:Decrypt
+                Resource: !Ref EvidenceKeyArn
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub secretsmanager.${AWS::Region}.amazonaws.com
+
+  IntakeDbConnect:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: fnol-intake-db
+      Roles:
+        - fnol-intake
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ConnectAsIntake
+            Effect: Allow
+            Action: rds-db:connect
+            Resource: !Sub
+              - arn:aws:rds-db:${Region}:${Account}:dbuser:${DbResource}/fnol_intake
+              - Region: !Ref AWS::Region
+                Account: !Ref AWS::AccountId
+                DbResource: !GetAtt Database.DbiResourceId
+
+  PolicyDbConnect:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: fnol-policy-db
+      Roles:
+        - fnol-policy
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ConnectAsPolicy
+            Effect: Allow
+            Action: rds-db:connect
+            Resource: !Sub
+              - arn:aws:rds-db:${Region}:${Account}:dbuser:${DbResource}/fnol_policy
+              - Region: !Ref AWS::Region
+                Account: !Ref AWS::AccountId
+                DbResource: !GetAtt Database.DbiResourceId
+
+  RulesDbConnect:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: fnol-rules-db
+      Roles:
+        - fnol-rules
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ConnectAsRules
+            Effect: Allow
+            Action: rds-db:connect
+            Resource: !Sub
+              - arn:aws:rds-db:${Region}:${Account}:dbuser:${DbResource}/fnol_rules
+              - Region: !Ref AWS::Region
+                Account: !Ref AWS::AccountId
+                DbResource: !GetAtt Database.DbiResourceId
+
+  CitationsDbConnect:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: fnol-citations-db
+      Roles:
+        - fnol-citations
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ConnectAsCitations
+            Effect: Allow
+            Action: rds-db:connect
+            Resource: !Sub
+              - arn:aws:rds-db:${Region}:${Account}:dbuser:${DbResource}/fnol_citations
+              - Region: !Ref AWS::Region
+                Account: !Ref AWS::AccountId
+                DbResource: !GetAtt Database.DbiResourceId
+
+  AnalystDbConnect:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: fnol-analyst-db
+      Roles:
+        - fnol-analyst
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ConnectAsAnalyst
+            Effect: Allow
+            Action: rds-db:connect
+            Resource: !Sub
+              - arn:aws:rds-db:${Region}:${Account}:dbuser:${DbResource}/fnol_analyst
+              - Region: !Ref AWS::Region
+                Account: !Ref AWS::AccountId
+                DbResource: !GetAtt Database.DbiResourceId
+
+  EnterpriseDbConnect:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: fnol-enterprise-db
+      Roles:
+        - fnol-enterprise
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ConnectAsEnterprise
+            Effect: Allow
+            Action: rds-db:connect
+            Resource: !Sub
+              - arn:aws:rds-db:${Region}:${Account}:dbuser:${DbResource}/fnol_enterprise
+              - Region: !Ref AWS::Region
+                Account: !Ref AWS::AccountId
+                DbResource: !GetAtt Database.DbiResourceId
+
+  ReviewerDbConnect:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: fnol-reviewer-db
+      Roles:
+        - fnol-reviewer
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ConnectAsReviewer
+            Effect: Allow
+            Action: rds-db:connect
+            Resource: !Sub
+              - arn:aws:rds-db:${Region}:${Account}:dbuser:${DbResource}/fnol_reviewer
+              - Region: !Ref AWS::Region
+                Account: !Ref AWS::AccountId
+                DbResource: !GetAtt Database.DbiResourceId
+
+Outputs:
+  VpcId:
+    Value: !Ref VpcId
+  DatabaseSecurityGroupId:
+    Value: !Ref DatabaseSecurityGroup
+  DatabaseEndpoint:
+    Value: !GetAtt Database.Endpoint.Address
+  DatabasePort:
+    Value: !GetAtt Database.Endpoint.Port
+  DatabaseName:
+    Value: !Ref DbName
+  DatabaseResourceId:
+    Value: !GetAtt Database.DbiResourceId
+  MasterSecretArn:
+    Value: !GetAtt Database.MasterUserSecret.SecretArn
+  MigrateRoleArn:
+    Value: !GetAtt MigrateRole.Arn

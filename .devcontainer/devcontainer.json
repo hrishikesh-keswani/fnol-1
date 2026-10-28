@@ -1,0 +1,35 @@
+{
+  "name": "auto-fnol-participant",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "workspaceFolder": "/workspaces/auto-fnol-participant",
+  "forwardPorts": [8767],
+  "portsAttributes": {
+    "8767": {
+      "label": "FNOL mock API",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "uv sync --locked && uv run --locked python tools/validate_package.py",
+  "postStartCommand": "bash -lc 'test -d .venv || uv sync --locked'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "FNOL_AI_ENABLED": "false"
+  }
+}

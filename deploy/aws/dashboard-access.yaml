@@ -1,0 +1,162 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Private tunnel for a read-only dashboard login. Does not change the RDS
+  instance, does not assign a public IP, and does not open 5432 to the
+  internet. A teammate port-forwards through this instance with Session
+  Manager, then signs in as fnol_dashboard with an IAM auth token.
+
+Parameters:
+  VpcId:
+    Type: String
+    Default: vpc-05da07556a583ba88
+    AllowedPattern: "vpc-[0-9a-f]+"
+  AppSubnetId:
+    Type: String
+    Default: subnet-00eea3b5317c5e492
+    AllowedPattern: "subnet-[0-9a-f]+"
+    Description: Private app subnet that already routes 0.0.0.0/0 to the NAT gateway.
+  DatabaseSecurityGroupId:
+    Type: String
+    Default: sg-04d6a14b637d27936
+    AllowedPattern: "sg-[0-9a-f]+"
+    Description: fnol-postgres security group. This stack adds one 5432 ingress rule from the tunnel.
+  DbResourceId:
+    Type: String
+    Default: db-3NRAPMWGKZYG5XXXFZLDTL3VIM
+    AllowedPattern: "db-[A-Z0-9]+"
+    Description: DbiResourceId of fnol-postgres. Used only in the rds-db:connect ARN.
+  TaskSecurityGroupId:
+    Type: String
+    Default: sg-0902a6085d45388f5
+    AllowedPattern: "sg-[0-9a-f]+"
+    Description: fnol-tasks. The tunnel may open the reviewer page on port 8090.
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+
+Resources:
+  TunnelSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: fnol-dashboard-tunnel
+      GroupDescription: Session Manager tunnel to FNOL Postgres. No inbound.
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          DestinationSecurityGroupId: !Ref DatabaseSecurityGroupId
+          Description: Postgres only
+        - IpProtocol: tcp
+          FromPort: 8090
+          ToPort: 8090
+          DestinationSecurityGroupId: !Ref TaskSecurityGroupId
+          Description: Reviewer page only
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: Session Manager through the NAT gateway
+      Tags:
+        - Key: Name
+          Value: fnol-dashboard-tunnel
+
+  ReviewerIngressFromTunnel:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref TaskSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 8090
+      ToPort: 8090
+      SourceSecurityGroupId: !Ref TunnelSecurityGroup
+      Description: Reviewer page from the dashboard tunnel only
+
+  PostgresIngressFromTunnel:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref DatabaseSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref TunnelSecurityGroup
+      Description: Postgres from the dashboard tunnel only
+
+  TunnelRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: fnol-dashboard-tunnel
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  TunnelProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: fnol-dashboard-tunnel
+      Roles:
+        - !Ref TunnelRole
+
+  TunnelInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t4g.nano
+      ImageId: !Ref LatestAmiId
+      IamInstanceProfile: !Ref TunnelProfile
+      SubnetId: !Ref AppSubnetId
+      SecurityGroupIds:
+        - !Ref TunnelSecurityGroup
+      SourceDestCheck: true
+      MetadataOptions:
+        HttpTokens: required
+        HttpEndpoint: enabled
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 8
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags:
+        - Key: Name
+          Value: fnol-dashboard-tunnel
+
+  DashboardConnect:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: fnol-dashboard-connect
+      Description: Sign in to FNOL Postgres as the read-only user fnol_dashboard and open the tunnel.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: ConnectReadOnly
+            Effect: Allow
+            Action: rds-db:connect
+            Resource: !Sub arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${DbResourceId}/fnol_dashboard
+          - Sid: OpenTunnel
+            Effect: Allow
+            Action: ssm:StartSession
+            Resource:
+              - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:instance/${TunnelInstance}
+              - !Sub arn:aws:ssm:${AWS::Region}::document/AWS-StartPortForwardingSessionToRemoteHost
+          - Sid: EndOwnSession
+            Effect: Allow
+            Action: ssm:TerminateSession
+            Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:session/${!aws:userid}-*
+          - Sid: FindTunnel
+            Effect: Allow
+            Action: ec2:DescribeInstances
+            Resource: "*"
+
+Outputs:
+  TunnelInstanceId:
+    Value: !Ref TunnelInstance
+  DashboardPolicyArn:
+    Value: !Ref DashboardConnect
+  DatabaseUser:
+    Value: fnol_dashboard

@@ -1,0 +1,27 @@
+apiVersion: 1
+
+datasources:
+  # Reaches fnol-postgres through the Session Manager tunnel on the host.
+  # fnol_bi is read-only and capped at 5 connections on a db.t4g.micro.
+  - name: FNOL Postgres
+    uid: fnol-postgres
+    type: grafana-postgresql-datasource
+    url: host.docker.internal:15432
+    user: fnol_bi
+    isDefault: true
+    jsonData:
+      database: fnol
+      sslmode: require
+      postgresVersion: 1600
+      maxOpenConns: 2
+      maxIdleConns: 1
+      connMaxLifetime: 14400
+    secureJsonData:
+      password: ${FNOL_BI_PASSWORD}
+
+  - name: CloudWatch
+    uid: fnol-cloudwatch
+    type: cloudwatch
+    jsonData:
+      authType: default
+      defaultRegion: us-east-1

@@ -1,0 +1,213 @@
+{
+  "passed": false,
+  "format_errors": [],
+  "cases": [
+    {
+      "case_id": "AUTO-D01",
+      "passed": true,
+      "checks": {
+        "classification": true,
+        "routing": true,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    },
+    {
+      "case_id": "AUTO-D02",
+      "passed": true,
+      "checks": {
+        "classification": true,
+        "routing": true,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    },
+    {
+      "case_id": "AUTO-D03",
+      "passed": true,
+      "checks": {
+        "classification": true,
+        "routing": true,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    },
+    {
+      "case_id": "AUTO-D04",
+      "passed": true,
+      "checks": {
+        "classification": true,
+        "routing": true,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    },
+    {
+      "case_id": "AUTO-D05",
+      "passed": true,
+      "checks": {
+        "classification": true,
+        "routing": true,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    },
+    {
+      "case_id": "AUTO-D06",
+      "passed": true,
+      "checks": {
+        "classification": true,
+        "routing": true,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    },
+    {
+      "case_id": "AUTO-D07",
+      "passed": true,
+      "checks": {
+        "classification": true,
+        "routing": true,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    },
+    {
+      "case_id": "AUTO-D08",
+      "passed": false,
+      "checks": {
+        "classification": true,
+        "routing": false,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    },
+    {
+      "case_id": "AUTO-D09",
+      "passed": true,
+      "checks": {
+        "classification": true,
+        "routing": true,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    },
+    {
+      "case_id": "AUTO-D10",
+      "passed": true,
+      "checks": {
+        "classification": true,
+        "routing": true,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    },
+    {
+      "case_id": "AUTO-D11",
+      "passed": true,
+      "checks": {
+        "classification": true,
+        "routing": true,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    },
+    {
+      "case_id": "AUTO-D12",
+      "passed": true,
+      "checks": {
+        "classification": true,
+        "routing": true,
+        "policy_selection": true,
+        "facts": true,
+        "missing_information": true,
+        "deadline": true,
+        "citations_valid": true,
+        "required_evidence": true,
+        "narrative_present": true,
+        "no_restricted_values": true,
+        "targeted_questions": true
+      }
+    }
+  ],
+  "passed_cases": 11,
+  "total_cases": 12,
+  "limitations": "Automated checks do not establish semantic grounding, safe prose, human approval, tool correctness or readiness. Review narrative and server audit separately."
+}

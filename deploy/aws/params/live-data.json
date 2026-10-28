@@ -1,0 +1,46 @@
+[
+  {
+    "ParameterKey": "EvidenceKeyArn",
+    "ParameterValue": "arn:aws:kms:us-east-1:104005345381:key/8f10cc48-a974-44fc-807a-60041558d8ab"
+  },
+  {
+    "ParameterKey": "VpcId",
+    "ParameterValue": "vpc-05da07556a583ba88"
+  },
+  {
+    "ParameterKey": "DbSubnetA",
+    "ParameterValue": "subnet-0c107464e812ac7cf"
+  },
+  {
+    "ParameterKey": "DbSubnetB",
+    "ParameterValue": "subnet-021865e74ab89de80"
+  },
+  {
+    "ParameterKey": "TaskSecurityGroupId",
+    "ParameterValue": "sg-0902a6085d45388f5"
+  },
+  {
+    "ParameterKey": "AppSubnetA",
+    "ParameterValue": "subnet-00eea3b5317c5e492"
+  },
+  {
+    "ParameterKey": "AppSubnetB",
+    "ParameterValue": "subnet-02cadb526cc74c182"
+  },
+  {
+    "ParameterKey": "CreateVpcEndpoints",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "DbInstanceIdentifier",
+    "ParameterValue": "fnol-postgres"
+  },
+  {
+    "ParameterKey": "MultiAZ",
+    "ParameterValue": "false"
+  },
+  {
+    "ParameterKey": "DeletionProtection",
+    "ParameterValue": "true"
+  }
+]

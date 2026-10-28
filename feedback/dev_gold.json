@@ -1,0 +1,509 @@
+{
+  "AUTO-D01": {
+    "classification": [
+      "collision"
+    ],
+    "routing": [
+      "standard"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "facts": {
+      "policy_number": "PA-D01",
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "vehicle_id": "VEH-D01",
+      "injury_reported": false,
+      "selected_policy_version": "2"
+    },
+    "missing_information": [],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D01-INTAKE"
+      ],
+      [
+        "AUTO-D01-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-WORDING-V2"
+      ],
+      [
+        "AUTO-D01-CLAIMS"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D01"
+    ],
+    "rationale": "Route standard. Policy interval is inclusive at start and exclusive at end. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  },
+  "AUTO-D02": {
+    "classification": [
+      "collision"
+    ],
+    "routing": [
+      "urgent"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "facts": {
+      "policy_number": "PA-D02",
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "vehicle_id": "VEH-D02",
+      "injury_reported": true,
+      "selected_policy_version": "2"
+    },
+    "missing_information": [],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D02-INTAKE"
+      ],
+      [
+        "AUTO-D02-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-WORDING-V2"
+      ],
+      [
+        "AUTO-D02-CLAIMS"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D02"
+    ],
+    "rationale": "Route urgent. Policy interval is inclusive at start and exclusive at end. Retain injury urgency visibly even if manual routing takes precedence. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  },
+  "AUTO-D03": {
+    "classification": [
+      "theft"
+    ],
+    "routing": [
+      "specialist"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "facts": {
+      "policy_number": "PA-D03",
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "vehicle_id": "VEH-D03",
+      "injury_reported": false,
+      "selected_policy_version": "2"
+    },
+    "missing_information": [],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D03-INTAKE"
+      ],
+      [
+        "AUTO-D03-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-WORDING-V2"
+      ],
+      [
+        "AUTO-D03-CLAIMS"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D03"
+    ],
+    "rationale": "Route specialist. Policy interval is inclusive at start and exclusive at end. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  },
+  "AUTO-D04": {
+    "classification": [
+      "collision"
+    ],
+    "routing": [
+      "manual_review"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "facts": {
+      "policy_number": "PA-D04",
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "vehicle_id": "VEH-D04",
+      "injury_reported": false,
+      "selected_policy_version": "2"
+    },
+    "missing_information": [
+      "driver_name",
+      "incident_location"
+    ],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D04-INTAKE"
+      ],
+      [
+        "AUTO-D04-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-WORDING-V2"
+      ],
+      [
+        "AUTO-D04-CLAIMS"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D04"
+    ],
+    "rationale": "Route manual_review. Policy interval is inclusive at start and exclusive at end. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  },
+  "AUTO-D05": {
+    "classification": [
+      "collision"
+    ],
+    "routing": [
+      "manual_review"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01"
+    ],
+    "facts": {
+      "policy_number": "PA-D05",
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "vehicle_id": "VEH-D05",
+      "injury_reported": false,
+      "selected_policy_version": null
+    },
+    "missing_information": [],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D05-INTAKE"
+      ],
+      [
+        "AUTO-D05-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-D05-CLAIMS"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D05"
+    ],
+    "rationale": "Route manual_review. Policy interval is inclusive at start and exclusive at end. No unique policy applies; preserve null and request human review, never deny. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  },
+  "AUTO-D06": {
+    "classification": [
+      "collision"
+    ],
+    "routing": [
+      "manual_review"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01"
+    ],
+    "facts": {
+      "policy_number": "PA-D06",
+      "incident_timestamp": "2027-01-01T00:00:00Z",
+      "vehicle_id": "VEH-D06",
+      "injury_reported": false,
+      "selected_policy_version": null
+    },
+    "missing_information": [],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D06-INTAKE"
+      ],
+      [
+        "AUTO-D06-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-D06-CLAIMS"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D06"
+    ],
+    "rationale": "Route manual_review. Policy interval is inclusive at start and exclusive at end. No unique policy applies; preserve null and request human review, never deny. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  },
+  "AUTO-D07": {
+    "classification": [
+      "collision"
+    ],
+    "routing": [
+      "manual_review"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "facts": {
+      "policy_number": "PA-D07",
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "vehicle_id": "VEH-D07",
+      "injury_reported": false,
+      "selected_policy_version": "2"
+    },
+    "missing_information": [],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D07-INTAKE"
+      ],
+      [
+        "AUTO-D07-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-WORDING-V2"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D07"
+    ],
+    "rationale": "Route manual_review. Policy interval is inclusive at start and exclusive at end. Claims service outage prevents complete duplicate review. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  },
+  "AUTO-D08": {
+    "classification": [
+      "collision"
+    ],
+    "routing": [
+      "standard"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "facts": {
+      "policy_number": "PA-D08",
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "vehicle_id": "VEH-D08",
+      "injury_reported": false,
+      "selected_policy_version": "2"
+    },
+    "missing_information": [],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D08-INTAKE"
+      ],
+      [
+        "AUTO-D08-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-WORDING-V2"
+      ],
+      [
+        "AUTO-D08-CLAIMS"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D08"
+    ],
+    "rationale": "Route standard. Policy interval is inclusive at start and exclusive at end. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  },
+  "AUTO-D09": {
+    "classification": [
+      "glass"
+    ],
+    "routing": [
+      "standard"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2",
+      "AUTO-END-GLASS-01"
+    ],
+    "facts": {
+      "policy_number": "PA-D09",
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "vehicle_id": "VEH-D09",
+      "injury_reported": false,
+      "selected_policy_version": "2"
+    },
+    "missing_information": [],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D09-INTAKE"
+      ],
+      [
+        "AUTO-D09-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-WORDING-V2"
+      ],
+      [
+        "AUTO-END-GLASS-01"
+      ],
+      [
+        "AUTO-D09-CLAIMS"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D09"
+    ],
+    "rationale": "Route standard. Policy interval is inclusive at start and exclusive at end. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  },
+  "AUTO-D10": {
+    "classification": [
+      "glass"
+    ],
+    "routing": [
+      "standard"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2",
+      "AUTO-END-GLASS-01"
+    ],
+    "facts": {
+      "policy_number": "PA-D09",
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "vehicle_id": "VEH-D09",
+      "injury_reported": false,
+      "selected_policy_version": "2"
+    },
+    "missing_information": [],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D10-INTAKE"
+      ],
+      [
+        "AUTO-D10-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-WORDING-V2"
+      ],
+      [
+        "AUTO-END-GLASS-01"
+      ],
+      [
+        "AUTO-D10-CLAIMS"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D10"
+    ],
+    "rationale": "Route standard. Policy interval is inclusive at start and exclusive at end. Duplicate delivery must not create another claim. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  },
+  "AUTO-D11": {
+    "classification": [
+      "collision"
+    ],
+    "routing": [
+      "specialist"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "facts": {
+      "policy_number": "PA-D11",
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "vehicle_id": "VEH-D11",
+      "injury_reported": false,
+      "selected_policy_version": "2"
+    },
+    "missing_information": [],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D11-INTAKE"
+      ],
+      [
+        "AUTO-D11-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-WORDING-V2"
+      ],
+      [
+        "AUTO-D11-CLAIMS"
+      ],
+      [
+        "AUTO-D11-ESTIMATE"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D11"
+    ],
+    "rationale": "Route specialist. Policy interval is inclusive at start and exclusive at end. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  },
+  "AUTO-D12": {
+    "classification": [
+      "collision"
+    ],
+    "routing": [
+      "standard"
+    ],
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V1"
+    ],
+    "facts": {
+      "policy_number": "PA-D12",
+      "incident_timestamp": "2026-08-31T23:59:59Z",
+      "vehicle_id": "VEH-D12",
+      "injury_reported": false,
+      "selected_policy_version": "1"
+    },
+    "missing_information": [],
+    "deadline": null,
+    "evidence_groups": [
+      [
+        "AUTO-D12-INTAKE"
+      ],
+      [
+        "AUTO-D12-POLICY"
+      ],
+      [
+        "AUTO-TRIAGE-01"
+      ],
+      [
+        "AUTO-WORDING-V1"
+      ],
+      [
+        "AUTO-D12-CLAIMS"
+      ]
+    ],
+    "restricted_values": [
+      "SYNTHETIC-PRIVATE-AUTO-D12"
+    ],
+    "rationale": "Route standard. Policy interval is inclusive at start and exclusive at end. Cite potentially relevant wording only; no adjudication or unapproved record creation."
+  }
+}

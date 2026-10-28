@@ -1,0 +1,1258 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  ECS task definitions for the seven FNOL Fargate services and a one-off
+  migrate task. This stack does not create the cluster, the VPC, the task
+  roles, the log groups, or the Cloud Map namespace. ManageServices defaults
+  to false, so a deploy only registers task definition revisions and does not
+  replace the running services. Roll those revisions with update-service after
+  the migrate task succeeds. Image tag 1.1.2 does not contain the Postgres
+  driver; publish a new tag before StateBackend=postgres is rolled out.
+  Step servers listen on 8080. Cloud Map names distinguish them.
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: fnol
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9-]{0,30}"
+  ImageTag:
+    Type: String
+    Default: "1.1.2"
+    AllowedPattern: "[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}"
+    Description: ECR tag. The running tag 1.1.2 has no psycopg. Build a new tag before cutover.
+  StateBackend:
+    Type: String
+    Default: postgres
+    AllowedValues:
+      - postgres
+      - sqlite
+    Description: postgres sets FNOL_RDS_* and uses the postgres dependency group. sqlite matches the EFS tasks.
+  PgNamespace:
+    Type: String
+    Default: shared
+    AllowedPattern: "shared"
+  DatabaseName:
+    Type: String
+    Default: fnol
+    AllowedPattern: "[a-z][a-z0-9_]{0,30}"
+  DatabaseEndpoint:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|[A-Za-z0-9._-]+"
+    Description: DatabaseEndpoint output from the fnol-data stack. Required when StateBackend is postgres.
+  MountEfs:
+    Type: String
+    Default: "true"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: Keep the fnol-state EFS mount through cutover. Set false only after Postgres is accepted.
+  EfsFileSystemId:
+    Type: String
+    Default: fs-035b11da15aa05ed6
+    AllowedPattern: "fs-[0-9a-f]+"
+  AppSubnetA:
+    Type: String
+    Default: subnet-00eea3b5317c5e492
+    AllowedPattern: "subnet-[0-9a-f]+"
+    Description: fnol-private-a (us-east-1a, 10.43.11.0/24).
+  AppSubnetB:
+    Type: String
+    Default: subnet-02cadb526cc74c182
+    AllowedPattern: "subnet-[0-9a-f]+"
+    Description: fnol-private-b (us-east-1b, 10.43.12.0/24).
+  TaskSecurityGroupId:
+    Type: String
+    Default: sg-0902a6085d45388f5
+    AllowedPattern: "sg-[0-9a-f]+"
+    Description: Existing fnol-tasks security group.
+  DnsNamespace:
+    Type: String
+    Default: fnol.internal
+    Description: Existing Cloud Map private DNS namespace.
+  ManageServices:
+    Type: String
+    Default: "false"
+    AllowedValues:
+      - "true"
+      - "false"
+    Description: >
+      False registers task definitions only. True also creates ECS services.
+      Leave false while the live services exist, then adopt them with
+      update-service or a CloudFormation import. See deploy/aws/README.md.
+  DesiredCount:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 4
+    Description: Used only when ManageServices is true. Confirm the live count before import.
+  IntakeDiscoveryServiceId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|srv-[A-Za-z0-9]+"
+    Description: Existing Cloud Map service id for intake.fnol.internal. Optional. Used only when ManageServices is true.
+
+  PolicyDiscoveryServiceId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|srv-[A-Za-z0-9]+"
+    Description: Existing Cloud Map service id for policy.fnol.internal. Optional. Used only when ManageServices is true.
+
+  RulesDiscoveryServiceId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|srv-[A-Za-z0-9]+"
+    Description: Existing Cloud Map service id for rules.fnol.internal. Optional. Used only when ManageServices is true.
+
+  CitationsDiscoveryServiceId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|srv-[A-Za-z0-9]+"
+    Description: Existing Cloud Map service id for citations.fnol.internal. Optional. Used only when ManageServices is true.
+
+  EnterpriseDiscoveryServiceId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|srv-[A-Za-z0-9]+"
+    Description: Existing Cloud Map service id for enterprise.fnol.internal. Optional. Used only when ManageServices is true.
+
+  ReviewerDiscoveryServiceId:
+    Type: String
+    Default: ""
+    AllowedPattern: "^$|srv-[A-Za-z0-9]+"
+    Description: Existing Cloud Map service id for reviewer.fnol.internal. Optional. Used only when ManageServices is true.
+
+Rules:
+  PostgresNeedsEndpoint:
+    RuleCondition: !Equals [!Ref StateBackend, postgres]
+    Assertions:
+      - Assert: !Not [!Equals [!Ref DatabaseEndpoint, ""]]
+        AssertDescription: DatabaseEndpoint is required when StateBackend is postgres.
+
+Conditions:
+  UsePostgres: !Equals [!Ref StateBackend, postgres]
+  MountStateVolume: !Equals [!Ref MountEfs, "true"]
+  CreateServices: !Equals [!Ref ManageServices, "true"]
+  HasIntakeDiscovery: !Not [!Equals [!Ref IntakeDiscoveryServiceId, ""]]
+  HasPolicyDiscovery: !Not [!Equals [!Ref PolicyDiscoveryServiceId, ""]]
+  HasRulesDiscovery: !Not [!Equals [!Ref RulesDiscoveryServiceId, ""]]
+  HasCitationsDiscovery: !Not [!Equals [!Ref CitationsDiscoveryServiceId, ""]]
+  HasEnterpriseDiscovery: !Not [!Equals [!Ref EnterpriseDiscoveryServiceId, ""]]
+  HasReviewerDiscovery: !Not [!Equals [!Ref ReviewerDiscoveryServiceId, ""]]
+
+Resources:
+  IntakeTask:
+    Type: AWS::ECS::TaskDefinition
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Family: fnol-intake
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-execution
+      TaskRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-intake
+      Volumes:
+        - !If
+          - MountStateVolume
+          - Name: state
+            EFSVolumeConfiguration:
+              FilesystemId: !Ref EfsFileSystemId
+              TransitEncryption: ENABLED
+              RootDirectory: /
+          - !Ref AWS::NoValue
+      ContainerDefinitions:
+        - Name: intake
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fnol:${ImageTag}
+          Essential: true
+          Command: !If
+            - UsePostgres
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --group
+              - postgres
+              - --no-dev
+              - python
+              - server/input_server.py
+              - --http
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --no-dev
+              - python
+              - server/input_server.py
+              - --http
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          Environment:
+          - Name: FNOL_AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: FNOL_HTTP_PORT
+            Value: "8080"
+          - Name: FNOL_S3_BUCKET
+            Value: !Sub fnol-${AWS::AccountId}-evidence
+          - Name: FNOL_STATE_DIR
+            Value: !If [MountStateVolume, "/mnt/state", "/tmp/fnol-state"]
+          - Name: FNOL_MOCK_URL
+            Value: !Sub http://enterprise.${DnsNamespace}:8767
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_IAM_AUTH
+              Value: "1"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_HOST
+              Value: !Ref DatabaseEndpoint
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_PORT
+              Value: "5432"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_DB
+              Value: !Ref DatabaseName
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_USER
+              Value: fnol_intake
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_PG_NAMESPACE
+              Value: !Ref PgNamespace
+            - !Ref AWS::NoValue
+          MountPoints:
+            - !If
+              - MountStateVolume
+              - SourceVolume: state
+                ContainerPath: /mnt/state
+                ReadOnly: false
+              - !Ref AWS::NoValue
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /fnol/intake
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  PolicyTask:
+    Type: AWS::ECS::TaskDefinition
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Family: fnol-policy
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-execution
+      TaskRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-policy
+      Volumes:
+        - !If
+          - MountStateVolume
+          - Name: state
+            EFSVolumeConfiguration:
+              FilesystemId: !Ref EfsFileSystemId
+              TransitEncryption: ENABLED
+              RootDirectory: /
+          - !Ref AWS::NoValue
+      ContainerDefinitions:
+        - Name: policy
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fnol:${ImageTag}
+          Essential: true
+          Command: !If
+            - UsePostgres
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --group
+              - postgres
+              - --no-dev
+              - python
+              - server/policy_server.py
+              - --http
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --no-dev
+              - python
+              - server/policy_server.py
+              - --http
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          Environment:
+          - Name: AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: FNOL_HTTP_PORT
+            Value: "8080"
+          - Name: FNOL_STATE_DIR
+            Value: !If [MountStateVolume, "/mnt/state", "/tmp/fnol-state"]
+          - Name: FNOL_MOCK_URL
+            Value: !Sub http://enterprise.${DnsNamespace}:8767
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_IAM_AUTH
+              Value: "1"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_HOST
+              Value: !Ref DatabaseEndpoint
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_PORT
+              Value: "5432"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_DB
+              Value: !Ref DatabaseName
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_USER
+              Value: fnol_policy
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_PG_NAMESPACE
+              Value: !Ref PgNamespace
+            - !Ref AWS::NoValue
+          MountPoints:
+            - !If
+              - MountStateVolume
+              - SourceVolume: state
+                ContainerPath: /mnt/state
+                ReadOnly: false
+              - !Ref AWS::NoValue
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /fnol/policy
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  RulesTask:
+    Type: AWS::ECS::TaskDefinition
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Family: fnol-rules
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-execution
+      TaskRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-rules
+      Volumes:
+        - !If
+          - MountStateVolume
+          - Name: state
+            EFSVolumeConfiguration:
+              FilesystemId: !Ref EfsFileSystemId
+              TransitEncryption: ENABLED
+              RootDirectory: /
+          - !Ref AWS::NoValue
+      ContainerDefinitions:
+        - Name: rules
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fnol:${ImageTag}
+          Essential: true
+          Command: !If
+            - UsePostgres
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --group
+              - postgres
+              - --no-dev
+              - python
+              - server/rules_server.py
+              - --http
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --no-dev
+              - python
+              - server/rules_server.py
+              - --http
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          Environment:
+          - Name: AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: FNOL_HTTP_PORT
+            Value: "8080"
+          - Name: FNOL_STATE_DIR
+            Value: !If [MountStateVolume, "/mnt/state", "/tmp/fnol-state"]
+          - Name: FNOL_MOCK_URL
+            Value: !Sub http://enterprise.${DnsNamespace}:8767
+          - Name: FNOL_MODEL_PROVIDER
+            Value: bedrock
+          - Name: FNOL_BEDROCK_AUTH
+            Value: iam
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_IAM_AUTH
+              Value: "1"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_HOST
+              Value: !Ref DatabaseEndpoint
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_PORT
+              Value: "5432"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_DB
+              Value: !Ref DatabaseName
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_USER
+              Value: fnol_rules
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_PG_NAMESPACE
+              Value: !Ref PgNamespace
+            - !Ref AWS::NoValue
+          MountPoints:
+            - !If
+              - MountStateVolume
+              - SourceVolume: state
+                ContainerPath: /mnt/state
+                ReadOnly: false
+              - !Ref AWS::NoValue
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /fnol/rules
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  CitationsTask:
+    Type: AWS::ECS::TaskDefinition
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Family: fnol-citations
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-execution
+      TaskRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-citations
+      Volumes:
+        - !If
+          - MountStateVolume
+          - Name: state
+            EFSVolumeConfiguration:
+              FilesystemId: !Ref EfsFileSystemId
+              TransitEncryption: ENABLED
+              RootDirectory: /
+          - !Ref AWS::NoValue
+      ContainerDefinitions:
+        - Name: citations
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fnol:${ImageTag}
+          Essential: true
+          Command: !If
+            - UsePostgres
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --group
+              - postgres
+              - --no-dev
+              - python
+              - server/citation_server.py
+              - --http
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --no-dev
+              - python
+              - server/citation_server.py
+              - --http
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          Environment:
+          - Name: AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: FNOL_HTTP_PORT
+            Value: "8080"
+          - Name: FNOL_S3_BUCKET
+            Value: !Sub fnol-${AWS::AccountId}-evidence
+          - Name: FNOL_STATE_DIR
+            Value: !If [MountStateVolume, "/mnt/state", "/tmp/fnol-state"]
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_IAM_AUTH
+              Value: "1"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_HOST
+              Value: !Ref DatabaseEndpoint
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_PORT
+              Value: "5432"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_DB
+              Value: !Ref DatabaseName
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_USER
+              Value: fnol_citations
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_PG_NAMESPACE
+              Value: !Ref PgNamespace
+            - !Ref AWS::NoValue
+          MountPoints:
+            - !If
+              - MountStateVolume
+              - SourceVolume: state
+                ContainerPath: /mnt/state
+                ReadOnly: false
+              - !Ref AWS::NoValue
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /fnol/citations
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  AnalystTask:
+    Type: AWS::ECS::TaskDefinition
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Family: fnol-analyst
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-execution
+      TaskRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-analyst
+      Volumes:
+        - !If
+          - MountStateVolume
+          - Name: state
+            EFSVolumeConfiguration:
+              FilesystemId: !Ref EfsFileSystemId
+              TransitEncryption: ENABLED
+              RootDirectory: /
+          - !Ref AWS::NoValue
+      ContainerDefinitions:
+        - Name: analyst
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fnol:${ImageTag}
+          Essential: true
+          Command: !If
+            - UsePostgres
+            - - /bin/sh
+              - -c
+              - uv run --locked --group aws --group postgres --no-dev python -c "import psycopg; from fnol_foundation.db import ensure_ready; ensure_ready()" && exec uv run --locked --group aws --group postgres --no-dev python -m fnol_analyst.follow
+            - - sleep
+              - infinity
+          Environment:
+          - Name: AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: FNOL_AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: FNOL_AI_ENABLED
+            Value: "1"
+          - Name: FNOL_MODEL_PROVIDER
+            Value: bedrock
+          - Name: FNOL_BEDROCK_AUTH
+            Value: iam
+          - Name: BEDROCK_GUARDRAIL_ID
+            Value: !ImportValue fnol-shadow-guardrail-id
+          - Name: BEDROCK_GUARDRAIL_VERSION
+            Value: !ImportValue fnol-shadow-guardrail-version
+          - Name: FNOL_STEP_TRANSPORT
+            Value: http
+          - Name: FNOL_INTAKE_URL
+            Value: !Sub http://intake.${DnsNamespace}:8080
+          - Name: FNOL_POLICY_URL
+            Value: !Sub http://policy.${DnsNamespace}:8080
+          - Name: FNOL_RULES_URL
+            Value: !Sub http://rules.${DnsNamespace}:8080
+          - Name: FNOL_CITATIONS_URL
+            Value: !Sub http://citations.${DnsNamespace}:8080
+          - Name: FNOL_MOCK_URL
+            Value: !Sub http://enterprise.${DnsNamespace}:8767
+          - Name: FNOL_HTTP_PORT
+            Value: "8080"
+          - Name: FNOL_QUEUE_POLL_SECONDS
+            Value: "30"
+          - Name: FNOL_STATE_DIR
+            Value: !If [MountStateVolume, "/mnt/state", "/tmp/fnol-state"]
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_IAM_AUTH
+              Value: "1"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_HOST
+              Value: !Ref DatabaseEndpoint
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_PORT
+              Value: "5432"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_DB
+              Value: !Ref DatabaseName
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_USER
+              Value: fnol_analyst
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_PG_NAMESPACE
+              Value: !Ref PgNamespace
+            - !Ref AWS::NoValue
+          PortMappings:
+            - ContainerPort: 8080
+              Protocol: tcp
+          MountPoints:
+            - !If
+              - MountStateVolume
+              - SourceVolume: state
+                ContainerPath: /mnt/state
+                ReadOnly: false
+              - !Ref AWS::NoValue
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3)"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /fnol/analyst
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  EnterpriseTask:
+    Type: AWS::ECS::TaskDefinition
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Family: fnol-enterprise
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-execution
+      TaskRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-enterprise
+      Volumes:
+        - !If
+          - MountStateVolume
+          - Name: state
+            EFSVolumeConfiguration:
+              FilesystemId: !Ref EfsFileSystemId
+              TransitEncryption: ENABLED
+              RootDirectory: /
+          - !Ref AWS::NoValue
+      ContainerDefinitions:
+        - Name: enterprise
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fnol:${ImageTag}
+          Essential: true
+          Command: !If
+            - UsePostgres
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --group
+              - postgres
+              - --no-dev
+              - python
+              - tools/runtime.py
+              - serve
+              - --host
+              - 0.0.0.0
+              - --port
+              - "8767"
+              - --state
+              - !If [MountStateVolume, "/mnt/state/mock.sqlite", "/tmp/fnol-state/mock.sqlite"]
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --no-dev
+              - python
+              - tools/runtime.py
+              - serve
+              - --host
+              - 0.0.0.0
+              - --port
+              - "8767"
+              - --state
+              - !If [MountStateVolume, "/mnt/state/mock.sqlite", "/tmp/fnol-state/mock.sqlite"]
+          PortMappings:
+            - ContainerPort: 8767
+              Protocol: tcp
+          Environment:
+          - Name: AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: FNOL_STATE_DIR
+            Value: !If [MountStateVolume, "/mnt/state", "/tmp/fnol-state"]
+          - Name: FNOL_MOCK_STATE
+            Value: !If [MountStateVolume, "/mnt/state/mock.sqlite", "/tmp/fnol-state/mock.sqlite"]
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_IAM_AUTH
+              Value: "1"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_HOST
+              Value: !Ref DatabaseEndpoint
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_PORT
+              Value: "5432"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_DB
+              Value: !Ref DatabaseName
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_USER
+              Value: fnol_enterprise
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_PG_NAMESPACE
+              Value: !Ref PgNamespace
+            - !Ref AWS::NoValue
+          MountPoints:
+            - !If
+              - MountStateVolume
+              - SourceVolume: state
+                ContainerPath: /mnt/state
+                ReadOnly: false
+              - !Ref AWS::NoValue
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8767/health', timeout=3)"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /fnol/enterprise
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  ReviewerTask:
+    Type: AWS::ECS::TaskDefinition
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Family: fnol-reviewer
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-execution
+      TaskRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-reviewer
+      Volumes:
+        - !If
+          - MountStateVolume
+          - Name: state
+            EFSVolumeConfiguration:
+              FilesystemId: !Ref EfsFileSystemId
+              TransitEncryption: ENABLED
+              RootDirectory: /
+          - !Ref AWS::NoValue
+      ContainerDefinitions:
+        - Name: reviewer
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fnol:${ImageTag}
+          Essential: true
+          Command: !If
+            - UsePostgres
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --group
+              - postgres
+              - --no-dev
+              - python
+              - server/reviewer.py
+              - --host
+              - 0.0.0.0
+              - --port
+              - "8090"
+            - - uv
+              - run
+              - --locked
+              - --group
+              - aws
+              - --no-dev
+              - python
+              - server/reviewer.py
+              - --host
+              - 0.0.0.0
+              - --port
+              - "8090"
+          PortMappings:
+            - ContainerPort: 8090
+              Protocol: tcp
+          Environment:
+          - Name: AWS_REGION
+            Value: !Ref AWS::Region
+          - Name: FNOL_ANALYST_URL
+            Value: !Sub http://analyst.${DnsNamespace}:8080
+          - Name: FNOL_MOCK_STATE
+            Value: !If [MountStateVolume, "/mnt/state/mock.sqlite", "/tmp/fnol-state/mock.sqlite"]
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_IAM_AUTH
+              Value: "1"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_HOST
+              Value: !Ref DatabaseEndpoint
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_PORT
+              Value: "5432"
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_DB
+              Value: !Ref DatabaseName
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_RDS_USER
+              Value: fnol_reviewer
+            - !Ref AWS::NoValue
+          - !If
+            - UsePostgres
+            - Name: FNOL_PG_NAMESPACE
+              Value: !Ref PgNamespace
+            - !Ref AWS::NoValue
+          MountPoints:
+            - !If
+              - MountStateVolume
+              - SourceVolume: state
+                ContainerPath: /mnt/state
+                ReadOnly: false
+              - !Ref AWS::NoValue
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/health', timeout=3)"
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /fnol/reviewer
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  MigrateTask:
+    Type: AWS::ECS::TaskDefinition
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Family: fnol-migrate
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-execution
+      TaskRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/fnol/fnol-migrate
+      ContainerDefinitions:
+        - Name: migrate
+          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/fnol:${ImageTag}
+          Essential: true
+          Command:
+            - uv
+            - run
+            - --locked
+            - --group
+            - aws
+            - --group
+            - postgres
+            - --no-dev
+            - python
+            - tools/migrate.py
+          Environment:
+            - Name: FNOL_RDS_IAM_AUTH
+              Value: "1"
+            - Name: FNOL_RDS_HOST
+              Value: !Ref DatabaseEndpoint
+            - Name: FNOL_RDS_PORT
+              Value: "5432"
+            - Name: FNOL_RDS_DB
+              Value: !Ref DatabaseName
+            - Name: FNOL_RDS_USER
+              Value: fnol_migrate
+            - Name: FNOL_PG_NAMESPACE
+              Value: !Ref PgNamespace
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: FNOL_AWS_REGION
+              Value: !Ref AWS::Region
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /fnol/migrate
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  IntakeService:
+    Type: AWS::ECS::Service
+    Condition: CreateServices
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ServiceName: intake
+      Cluster: !Ref ClusterName
+      TaskDefinition: !Ref IntakeTask
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      PlatformVersion: "1.4.0"
+      EnableExecuteCommand: true
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref TaskSecurityGroupId
+          Subnets:
+            - !Ref AppSubnetA
+            - !Ref AppSubnetB
+      ServiceRegistries: !If
+        - HasIntakeDiscovery
+        - - RegistryArn: !Sub arn:aws:servicediscovery:${AWS::Region}:${AWS::AccountId}:service/${IntakeDiscoveryServiceId}
+            ContainerName: intake
+            ContainerPort: 8080
+        - !Ref AWS::NoValue
+
+  PolicyService:
+    Type: AWS::ECS::Service
+    Condition: CreateServices
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ServiceName: policy
+      Cluster: !Ref ClusterName
+      TaskDefinition: !Ref PolicyTask
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      PlatformVersion: "1.4.0"
+      EnableExecuteCommand: true
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref TaskSecurityGroupId
+          Subnets:
+            - !Ref AppSubnetA
+            - !Ref AppSubnetB
+      ServiceRegistries: !If
+        - HasPolicyDiscovery
+        - - RegistryArn: !Sub arn:aws:servicediscovery:${AWS::Region}:${AWS::AccountId}:service/${PolicyDiscoveryServiceId}
+            ContainerName: policy
+            ContainerPort: 8080
+        - !Ref AWS::NoValue
+
+  RulesService:
+    Type: AWS::ECS::Service
+    Condition: CreateServices
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ServiceName: rules
+      Cluster: !Ref ClusterName
+      TaskDefinition: !Ref RulesTask
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      PlatformVersion: "1.4.0"
+      EnableExecuteCommand: true
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref TaskSecurityGroupId
+          Subnets:
+            - !Ref AppSubnetA
+            - !Ref AppSubnetB
+      ServiceRegistries: !If
+        - HasRulesDiscovery
+        - - RegistryArn: !Sub arn:aws:servicediscovery:${AWS::Region}:${AWS::AccountId}:service/${RulesDiscoveryServiceId}
+            ContainerName: rules
+            ContainerPort: 8080
+        - !Ref AWS::NoValue
+
+  CitationsService:
+    Type: AWS::ECS::Service
+    Condition: CreateServices
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ServiceName: citations
+      Cluster: !Ref ClusterName
+      TaskDefinition: !Ref CitationsTask
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      PlatformVersion: "1.4.0"
+      EnableExecuteCommand: true
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref TaskSecurityGroupId
+          Subnets:
+            - !Ref AppSubnetA
+            - !Ref AppSubnetB
+      ServiceRegistries: !If
+        - HasCitationsDiscovery
+        - - RegistryArn: !Sub arn:aws:servicediscovery:${AWS::Region}:${AWS::AccountId}:service/${CitationsDiscoveryServiceId}
+            ContainerName: citations
+            ContainerPort: 8080
+        - !Ref AWS::NoValue
+
+  AnalystService:
+    Type: AWS::ECS::Service
+    Condition: CreateServices
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ServiceName: analyst
+      Cluster: !Ref ClusterName
+      TaskDefinition: !Ref AnalystTask
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      PlatformVersion: "1.4.0"
+      EnableExecuteCommand: true
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref TaskSecurityGroupId
+          Subnets:
+            - !Ref AppSubnetA
+            - !Ref AppSubnetB
+
+  EnterpriseService:
+    Type: AWS::ECS::Service
+    Condition: CreateServices
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ServiceName: enterprise
+      Cluster: !Ref ClusterName
+      TaskDefinition: !Ref EnterpriseTask
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      PlatformVersion: "1.4.0"
+      EnableExecuteCommand: true
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref TaskSecurityGroupId
+          Subnets:
+            - !Ref AppSubnetA
+            - !Ref AppSubnetB
+      ServiceRegistries: !If
+        - HasEnterpriseDiscovery
+        - - RegistryArn: !Sub arn:aws:servicediscovery:${AWS::Region}:${AWS::AccountId}:service/${EnterpriseDiscoveryServiceId}
+            ContainerName: enterprise
+            ContainerPort: 8767
+        - !Ref AWS::NoValue
+
+  ReviewerService:
+    Type: AWS::ECS::Service
+    Condition: CreateServices
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      ServiceName: reviewer
+      Cluster: !Ref ClusterName
+      TaskDefinition: !Ref ReviewerTask
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      PlatformVersion: "1.4.0"
+      EnableExecuteCommand: true
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+        DeploymentCircuitBreaker:
+          Enable: true
+          Rollback: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups:
+            - !Ref TaskSecurityGroupId
+          Subnets:
+            - !Ref AppSubnetA
+            - !Ref AppSubnetB
+      ServiceRegistries: !If
+        - HasReviewerDiscovery
+        - - RegistryArn: !Sub arn:aws:servicediscovery:${AWS::Region}:${AWS::AccountId}:service/${ReviewerDiscoveryServiceId}
+            ContainerName: reviewer
+            ContainerPort: 8090
+        - !Ref AWS::NoValue
+
+Outputs:
+  IntakeTaskDefinition:
+    Value: !Ref IntakeTask
+  PolicyTaskDefinition:
+    Value: !Ref PolicyTask
+  RulesTaskDefinition:
+    Value: !Ref RulesTask
+  CitationsTaskDefinition:
+    Value: !Ref CitationsTask
+  AnalystTaskDefinition:
+    Value: !Ref AnalystTask
+  EnterpriseTaskDefinition:
+    Value: !Ref EnterpriseTask
+  ReviewerTaskDefinition:
+    Value: !Ref ReviewerTask
+  MigrateTaskDefinition:
+    Value: !Ref MigrateTask

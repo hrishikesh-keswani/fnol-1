@@ -1,0 +1,735 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  FNOL foundation in us-east-1. One private evidence bucket, one KMS key,
+  and a separate task role per service. This stack does not create a VPC,
+  a NAT gateway, or running tasks. The Postgres database is deploy/aws/data.yaml
+  and encrypts with this key. Task definitions are deploy/aws/services.yaml.
+Metadata:
+  AWSToolsMetrics:
+    AWSAgentToolkit: aws-cloudformation@3
+  com.aws.cloudformation.Context:
+    arch: "platform roles for four step servers; analyst role has no s3"
+    must:
+      - "deploy only in us-east-1"
+      - "task roles cannot call iam or assume another role"
+      - "task roles cannot write or delete evidence objects"
+      - "this stack creates no NAT, VPC, or ECS service; RDS is deploy/aws/data.yaml; tasks are deploy/aws/services.yaml"
+    owner: "fnol platform"
+Rules:
+  MustBeUsEast1:
+    Assertions:
+      - Assert: !Equals [!Ref "AWS::Region", "us-east-1"]
+        AssertDescription: Gemma 4 31B for this migration is pinned to us-east-1.
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: fnol
+    AllowedPattern: "[a-zA-Z][a-zA-Z0-9-]{0,30}"
+    Description: ECS cluster name that may assume these roles later.
+
+Resources:
+  TaskBoundary:
+    Type: AWS::IAM::ManagedPolicy
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Ceiling on every FNOL role. Identity policies grant the real access."
+        must:
+          - "deny iam, organizations, and sts:AssumeRole"
+          - "deny object writes and key deletion even if an identity policy is widened later"
+        mutable: change-with-constraints
+    Properties:
+      Description: Blast-radius ceiling for FNOL task and execution roles.
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyPrivilegeAndWrites
+            Effect: Deny
+            Action:
+              - iam:*
+              - organizations:*
+              - account:*
+              - sts:AssumeRole
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:DeleteObjectVersion
+              - s3:PutBucket*
+              - s3:DeleteBucket*
+              - kms:ScheduleKeyDeletion
+              - kms:PutKeyPolicy
+              - kms:DisableKey
+              - bedrock:Create*
+              - bedrock:Delete*
+            Resource: "*"
+          - Sid: AllowOnlyWhatIdentityPoliciesGrant
+            Effect: Allow
+            Action: "*"
+            Resource: "*"
+
+  EvidenceKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "One customer key for the evidence bucket and the FNOL log groups."
+        must:
+          - "retain on stack delete"
+          - "logs service may use it only for /fnol log groups in this account"
+          - "RDS and Secrets Manager in this account may use it for the FNOL database"
+        mutable: must-never-change
+    Properties:
+      Description: FNOL evidence and log encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowAccountIam
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+          - Sid: AllowLogGroups
+            Effect: Allow
+            Principal:
+              Service: !Sub logs.${AWS::Region}.amazonaws.com
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+              ArnLike:
+                kms:EncryptionContext:aws:logs:arn: !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/fnol/*
+          - Sid: AllowRdsInAccount
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:CreateGrant
+              - kms:ListGrants
+              - kms:DescribeKey
+            Resource: "*"
+            Condition:
+              StringEquals:
+                kms:CallerAccount: !Ref AWS::AccountId
+                kms:ViaService: !Sub rds.${AWS::Region}.amazonaws.com
+          - Sid: AllowSecretsManager
+            Effect: Allow
+            Principal:
+              Service: secretsmanager.amazonaws.com
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:CreateGrant
+              - kms:DescribeKey
+            Resource: "*"
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+
+  EvidenceKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/fnol-evidence
+      TargetKeyId: !Ref EvidenceKey
+
+  EvidenceBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "case-documents, policy-wording, and fnol-fixtures live as prefixes in one bucket."
+        must:
+          - "block all public access"
+          - "deny non-TLS"
+          - "retain on stack delete"
+        mutable: must-never-change
+    Properties:
+      BucketName: !Sub fnol-${AWS::AccountId}-evidence
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: aws:kms
+              KMSMasterKeyID: !GetAtt EvidenceKey.Arn
+            BucketKeyEnabled: true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+
+  EvidenceBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref EvidenceBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: s3:*
+            Resource:
+              - !GetAtt EvidenceBucket.Arn
+              - !Sub ${EvidenceBucket.Arn}/*
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  Repository:
+    Type: AWS::ECR::Repository
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "One image. Each service overrides the container command."
+        must:
+          - "scan on push"
+          - "encrypt with the evidence key"
+        mutable: free-to-tune
+    Properties:
+      RepositoryName: fnol
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      ImageTagMutability: MUTABLE
+      EncryptionConfiguration:
+        EncryptionType: KMS
+        KmsKey: !GetAtt EvidenceKey.Arn
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"expire untagged","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countUnit":"days","countNumber":7},"action":{"type":"expire"}}]}
+
+  IntakeLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /fnol/intake
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt EvidenceKey.Arn
+  PolicyLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /fnol/policy
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt EvidenceKey.Arn
+  RulesLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /fnol/rules
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt EvidenceKey.Arn
+  CitationsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /fnol/citations
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt EvidenceKey.Arn
+  AnalystLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /fnol/analyst
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt EvidenceKey.Arn
+  EnterpriseLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /fnol/enterprise
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt EvidenceKey.Arn
+  ReviewerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /fnol/reviewer
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt EvidenceKey.Arn
+  MigrateLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /fnol/migrate
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt EvidenceKey.Arn
+
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "ECS pulls the image and writes logs. It cannot read evidence or call Bedrock."
+        must:
+          - "trust only ecs-tasks in this account and the named cluster"
+          - "ecr:GetAuthorizationToken stays on * because the API requires it"
+        mutable: change-with-constraints
+    Properties:
+      RoleName: fnol-execution
+      Path: /fnol/
+      PermissionsBoundary: !Ref TaskBoundary
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {"aws:SourceAccount": "${Account}"},
+                "ArnLike": {"aws:SourceArn": "arn:aws:ecs:${Region}:${Account}:*"}
+              }
+            }]
+          }
+        - Account: !Ref AWS::AccountId
+          Region: !Ref AWS::Region
+          Cluster: !Ref ClusterName
+      Policies:
+        - PolicyName: pull-and-log
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: EcrAuth
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Sid: EcrPull
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchGetImage
+                Resource: !GetAtt Repository.Arn
+              - Sid: UseEvidenceKey
+                Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                  - kms:GenerateDataKey
+                Resource: !GetAtt EvidenceKey.Arn
+              - Sid: WriteFnolLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/fnol/intake:*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/fnol/policy:*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/fnol/rules:*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/fnol/citations:*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/fnol/analyst:*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/fnol/enterprise:*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/fnol/reviewer:*
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/fnol/migrate:*
+
+  IntakeRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Reads documents and wording. The content screen runs on the rules service."
+        must:
+          - "no PutObject"
+          - "no bedrock"
+        mutable: change-with-constraints
+    Properties:
+      RoleName: fnol-intake
+      Path: /fnol/
+      PermissionsBoundary: !Ref TaskBoundary
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {"aws:SourceAccount": "${Account}"},
+                "ArnLike": {"aws:SourceArn": "arn:aws:ecs:${Region}:${Account}:*"}
+              }
+            }]
+          }
+        - Account: !Ref AWS::AccountId
+          Region: !Ref AWS::Region
+          Cluster: !Ref ClusterName
+      Policies:
+        - PolicyName: read-evidence
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadCaseAndWording
+                Effect: Allow
+                Action: s3:GetObject
+                Resource:
+                  - !Sub ${EvidenceBucket.Arn}/case-documents/*
+                  - !Sub ${EvidenceBucket.Arn}/policy-wording/*
+              - Sid: ListThosePrefixes
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt EvidenceBucket.Arn
+                Condition:
+                  StringLike:
+                    s3:prefix:
+                      - case-documents/*
+                      - policy-wording/*
+              - Sid: DecryptEvidence
+                Effect: Allow
+                Action: kms:Decrypt
+                Resource: !GetAtt EvidenceKey.Arn
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub s3.${AWS::Region}.amazonaws.com
+
+  CitationsRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Quotes files. No model call."
+        must:
+          - "read case-documents and policy-wording only"
+        mutable: change-with-constraints
+    Properties:
+      RoleName: fnol-citations
+      Path: /fnol/
+      PermissionsBoundary: !Ref TaskBoundary
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {"aws:SourceAccount": "${Account}"},
+                "ArnLike": {"aws:SourceArn": "arn:aws:ecs:${Region}:${Account}:*"}
+              }
+            }]
+          }
+        - Account: !Ref AWS::AccountId
+          Region: !Ref AWS::Region
+          Cluster: !Ref ClusterName
+      Policies:
+        - PolicyName: read-evidence
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: ReadCaseAndWording
+                Effect: Allow
+                Action: s3:GetObject
+                Resource:
+                  - !Sub ${EvidenceBucket.Arn}/case-documents/*
+                  - !Sub ${EvidenceBucket.Arn}/policy-wording/*
+              - Sid: ListThosePrefixes
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt EvidenceBucket.Arn
+                Condition:
+                  StringLike:
+                    s3:prefix:
+                      - case-documents/*
+                      - policy-wording/*
+              - Sid: DecryptEvidence
+                Effect: Allow
+                Action: kms:Decrypt
+                Resource: !GetAtt EvidenceKey.Arn
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub s3.${AWS::Region}.amazonaws.com
+
+  ShadowGuardrail:
+    Type: AWS::Bedrock::Guardrail
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Stops the Gemma summary from deciding coverage, payment, or fraud. The rules screen does not use it."
+        must:
+          - "denied topics and the two exercise markers only"
+          - "no sensitive-information filter, because a claim summary names people and places"
+        mutable: change-with-constraints
+    Properties:
+      Name: fnol-shadow-summary
+      Description: Light guardrail for the shadow narrative only. Trace is not requested on the model call.
+      BlockedInputMessaging: The summary request was blocked.
+      BlockedOutputsMessaging: "Summary withheld: model output was not a handler summary."
+      TopicPolicyConfig:
+        TopicsConfig:
+          - Name: coverage-decision
+            Definition: Deciding whether a loss is covered, not covered, or payable.
+            Examples:
+              - Coverage is approved for this collision.
+              - This loss is not covered.
+            Type: DENY
+            InputAction: BLOCK
+            OutputAction: BLOCK
+            InputEnabled: true
+            OutputEnabled: true
+          - Name: claim-denial
+            Definition: Approving, denying, or closing a claim.
+            Examples:
+              - The claim is denied.
+              - The claim is approved.
+            Type: DENY
+            InputAction: BLOCK
+            OutputAction: BLOCK
+            InputEnabled: true
+            OutputEnabled: true
+          - Name: claim-payment
+            Definition: Authorizing a payment, a settlement amount, or a financial reserve.
+            Examples:
+              - We will pay the repair.
+              - Set the reserve at 5000.
+            Type: DENY
+            InputAction: BLOCK
+            OutputAction: BLOCK
+            InputEnabled: true
+            OutputEnabled: true
+      WordPolicyConfig:
+        WordsConfig:
+          - Text: private_token
+            InputAction: BLOCK
+            OutputAction: BLOCK
+            InputEnabled: true
+            OutputEnabled: true
+          - Text: SYNTHETIC-PRIVATE-
+            InputAction: BLOCK
+            OutputAction: BLOCK
+            InputEnabled: true
+            OutputEnabled: true
+
+  ShadowGuardrailVersion:
+    Type: AWS::Bedrock::GuardrailVersion
+    Properties:
+      GuardrailIdentifier: !GetAtt ShadowGuardrail.GuardrailId
+      Description: Published summary guardrail.
+
+  AnalystRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Shadow model only. The analyst never reads raw files."
+        must:
+          - "no s3"
+          - "bedrock limited to google.gemma-4-31b"
+          - "ApplyGuardrail only on the shadow summary guardrail"
+        mutable: change-with-constraints
+    Properties:
+      RoleName: fnol-analyst
+      Path: /fnol/
+      PermissionsBoundary: !Ref TaskBoundary
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {"aws:SourceAccount": "${Account}"},
+                "ArnLike": {"aws:SourceArn": "arn:aws:ecs:${Region}:${Account}:*"}
+              }
+            }]
+          }
+        - Account: !Ref AWS::AccountId
+          Region: !Ref AWS::Region
+          Cluster: !Ref ClusterName
+      Policies:
+        - PolicyName: invoke-gemma
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeGemma
+                Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/google.gemma-4-31b
+              - Sid: CreateMantleInference
+                Effect: Allow
+                Action: bedrock-mantle:CreateInference
+                Resource: !Sub arn:aws:bedrock-mantle:${AWS::Region}:${AWS::AccountId}:project/default
+              - Sid: ApplyShadowGuardrail
+                Effect: Allow
+                Action: bedrock:ApplyGuardrail
+                Resource: !GetAtt ShadowGuardrail.GuardrailArn
+
+  PolicyRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Policy selection calls the claims API only. No AWS data APIs."
+        must:
+          - "no identity policy"
+        mutable: change-with-constraints
+    Properties:
+      RoleName: fnol-policy
+      Path: /fnol/
+      PermissionsBoundary: !Ref TaskBoundary
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {"aws:SourceAccount": "${Account}"},
+                "ArnLike": {"aws:SourceArn": "arn:aws:ecs:${Region}:${Account}:*"}
+              }
+            }]
+          }
+        - Account: !Ref AWS::AccountId
+          Region: !Ref AWS::Region
+          Cluster: !Ref ClusterName
+
+  RulesRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Routes from stored fields and runs the content screen. No document bucket."
+        must:
+          - "bedrock limited to google.gemma-4-31b"
+          - "no s3"
+        mutable: change-with-constraints
+    Properties:
+      RoleName: fnol-rules
+      Path: /fnol/
+      PermissionsBoundary: !Ref TaskBoundary
+      Policies:
+        - PolicyName: invoke-gemma
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: InvokeGemma
+                Effect: Allow
+                Action: bedrock:InvokeModel
+                Resource: !Sub arn:aws:bedrock:${AWS::Region}::foundation-model/google.gemma-4-31b
+              - Sid: CreateMantleInference
+                Effect: Allow
+                Action: bedrock-mantle:CreateInference
+                Resource: !Sub arn:aws:bedrock-mantle:${AWS::Region}:${AWS::AccountId}:project/default
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {"aws:SourceAccount": "${Account}"},
+                "ArnLike": {"aws:SourceArn": "arn:aws:ecs:${Region}:${Account}:*"}
+              }
+            }]
+          }
+        - Account: !Ref AWS::AccountId
+          Region: !Ref AWS::Region
+          Cluster: !Ref ClusterName
+
+  EnterpriseRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "The mock reads the fixture baked into the image. No bucket access."
+        must:
+          - "no identity policy"
+        mutable: change-with-constraints
+    Properties:
+      RoleName: fnol-enterprise
+      Path: /fnol/
+      PermissionsBoundary: !Ref TaskBoundary
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {"aws:SourceAccount": "${Account}"},
+                "ArnLike": {"aws:SourceArn": "arn:aws:ecs:${Region}:${Account}:*"}
+              }
+            }]
+          }
+        - Account: !Ref AWS::AccountId
+          Region: !Ref AWS::Region
+          Cluster: !Ref ClusterName
+
+  ReviewerRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      com.aws.cloudformation.Context:
+        why: "Human approve and reject. No model and no evidence bucket."
+        must:
+          - "no identity policy"
+        mutable: change-with-constraints
+    Properties:
+      RoleName: fnol-reviewer
+      Path: /fnol/
+      PermissionsBoundary: !Ref TaskBoundary
+      AssumeRolePolicyDocument: !Sub
+        - |
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Effect": "Allow",
+              "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+              "Action": "sts:AssumeRole",
+              "Condition": {
+                "StringEquals": {"aws:SourceAccount": "${Account}"},
+                "ArnLike": {"aws:SourceArn": "arn:aws:ecs:${Region}:${Account}:*"}
+              }
+            }]
+          }
+        - Account: !Ref AWS::AccountId
+          Region: !Ref AWS::Region
+          Cluster: !Ref ClusterName
+
+Outputs:
+  TaskBoundaryArn:
+    Value: !Ref TaskBoundary
+  BucketName:
+    Value: !Ref EvidenceBucket
+  BucketArn:
+    Value: !GetAtt EvidenceBucket.Arn
+  KeyArn:
+    Value: !GetAtt EvidenceKey.Arn
+  RepositoryUri:
+    Value: !GetAtt Repository.RepositoryUri
+  ExecutionRoleArn:
+    Value: !GetAtt ExecutionRole.Arn
+  IntakeRoleArn:
+    Value: !GetAtt IntakeRole.Arn
+  CitationsRoleArn:
+    Value: !GetAtt CitationsRole.Arn
+  AnalystRoleArn:
+    Value: !GetAtt AnalystRole.Arn
+  ShadowGuardrailId:
+    Value: !GetAtt ShadowGuardrail.GuardrailId
+    Export:
+      Name: fnol-shadow-guardrail-id
+  ShadowGuardrailVersion:
+    Value: !GetAtt ShadowGuardrailVersion.Version
+    Export:
+      Name: fnol-shadow-guardrail-version
+  PolicyRoleArn:
+    Value: !GetAtt PolicyRole.Arn
+  RulesRoleArn:
+    Value: !GetAtt RulesRole.Arn
+  EnterpriseRoleArn:
+    Value: !GetAtt EnterpriseRole.Arn
+  ReviewerRoleArn:
+    Value: !GetAtt ReviewerRole.Arn

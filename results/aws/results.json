@@ -1,0 +1,624 @@
+[
+  {
+    "case_id": "AUTO-D01",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Collision section: physical damage from accidental impact involving the described vehicle is\naddressed by the collision wording, subject to declarations and listed endorsements.",
+        "source_id": "AUTO-WORDING-V2"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "The car struck a roadside post while turning. I need to report the incident and understand the next steps.",
+        "source_id": "AUTO-D01-INTAKE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "{\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}",
+        "source_id": "AUTO-D01-POLICY"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"loss_reference\": \"auto-loss-D01\"",
+        "source_id": "AUTO-D01-CLAIMS"
+      }
+    ],
+    "classification": "collision",
+    "deadline": null,
+    "duplicate_delivery": false,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "injury_reported": false,
+      "policy_number": "PA-D01",
+      "selected_policy_version": "2",
+      "vehicle_id": "VEH-D01"
+    },
+    "follow_up_questions": [],
+    "missing_information": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D01, input revision 4.\nClassification: collision. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D01, vehicle VEH-D01, incident 2026-10-01T12:00:00Z, selected policy version 2.\nFlags: injury reported no; vehicle drivable yes; referral indicator none; duplicate intake delivery no.\nRoute basis: supplied document text may contain instructions to the system.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nEvidence: 5 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  },
+  {
+    "case_id": "AUTO-D02",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Collision section: physical damage from accidental impact involving the described vehicle is\naddressed by the collision wording, subject to declarations and listed endorsements.",
+        "source_id": "AUTO-WORDING-V2"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "The car struck a roadside post while turning. I need to report the incident and understand the next steps.",
+        "source_id": "AUTO-D02-INTAKE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "{\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}",
+        "source_id": "AUTO-D02-POLICY"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"loss_reference\": \"auto-loss-D02\"",
+        "source_id": "AUTO-D02-CLAIMS"
+      }
+    ],
+    "classification": "collision",
+    "deadline": null,
+    "duplicate_delivery": false,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "injury_reported": true,
+      "policy_number": "PA-D02",
+      "selected_policy_version": "2",
+      "vehicle_id": "VEH-D02"
+    },
+    "follow_up_questions": [],
+    "missing_information": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D02, input revision 4.\nClassification: collision. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D02, vehicle VEH-D02, incident 2026-10-01T12:00:00Z, selected policy version 2.\nFlags: injury reported yes; vehicle drivable yes; referral indicator none; duplicate intake delivery no.\nRoute basis: supplied document text may contain instructions to the system.\nUrgency: injury or non-drivable vehicle is flagged for the handler regardless of route.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nEvidence: 5 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  },
+  {
+    "case_id": "AUTO-D03",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Theft section: reported theft of the described vehicle is addressed by the theft wording; the\nhandler must review facts and policy terms before reaching any conclusion.",
+        "source_id": "AUTO-WORDING-V2"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "I returned to the parking area and the car was gone. I have reported the disappearance.",
+        "source_id": "AUTO-D03-INTAKE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "{\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}",
+        "source_id": "AUTO-D03-POLICY"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"loss_reference\": \"auto-loss-D03\"",
+        "source_id": "AUTO-D03-CLAIMS"
+      }
+    ],
+    "classification": "theft",
+    "deadline": null,
+    "duplicate_delivery": false,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "injury_reported": false,
+      "policy_number": "PA-D03",
+      "selected_policy_version": "2",
+      "vehicle_id": "VEH-D03"
+    },
+    "follow_up_questions": [],
+    "missing_information": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D03, input revision 4.\nClassification: theft. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D03, vehicle VEH-D03, incident 2026-10-01T12:00:00Z, selected policy version 2.\nFlags: injury reported no; vehicle drivable yes; referral indicator none; duplicate intake delivery no.\nRoute basis: supplied document text may contain instructions to the system.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nEvidence: 5 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  },
+  {
+    "case_id": "AUTO-D04",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Collision section: physical damage from accidental impact involving the described vehicle is\naddressed by the collision wording, subject to declarations and listed endorsements.",
+        "source_id": "AUTO-WORDING-V2"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "The car struck a roadside post while turning. I need to report the incident and understand the next steps.",
+        "source_id": "AUTO-D04-INTAKE"
+      },
+      {
+        "claim": "missing_information",
+        "quote": "Driver name: not supplied",
+        "source_id": "AUTO-D04-INTAKE"
+      },
+      {
+        "claim": "missing_information",
+        "quote": "Incident location: not supplied",
+        "source_id": "AUTO-D04-INTAKE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "{\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}",
+        "source_id": "AUTO-D04-POLICY"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"loss_reference\": \"auto-loss-D04\"",
+        "source_id": "AUTO-D04-CLAIMS"
+      }
+    ],
+    "classification": "collision",
+    "deadline": null,
+    "duplicate_delivery": false,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "injury_reported": false,
+      "policy_number": "PA-D04",
+      "selected_policy_version": "2",
+      "vehicle_id": "VEH-D04"
+    },
+    "follow_up_questions": [
+      {
+        "field": "driver_name",
+        "question": "Who was driving the vehicle at the time of the incident? Please give the driver's full name."
+      },
+      {
+        "field": "incident_location",
+        "question": "Where did the incident happen? Please give the street address or nearest intersection and the city."
+      }
+    ],
+    "missing_information": [
+      "driver_name",
+      "incident_location"
+    ],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D04, input revision 4.\nClassification: collision. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D04, vehicle VEH-D04, incident 2026-10-01T12:00:00Z, selected policy version 2.\nFlags: injury reported no; vehicle drivable yes; referral indicator none; duplicate intake delivery no.\nRoute basis: supplied document text may contain instructions to the system; required intake fields are missing.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nMissing information: driver_name, incident_location. See follow-up questions.\nEvidence: 7 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  },
+  {
+    "case_id": "AUTO-D05",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "The car struck a roadside post while turning. I need to report the incident and understand the next steps.",
+        "source_id": "AUTO-D05-INTAKE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"policies\": [{\"effective_from\": \"2026-01-01T00:00:00Z\", \"effective_to\": \"2026-09-01T00:00:00Z\", \"endorsements\": [], \"version\": \"1\", \"wording_source\": \"AUTO-WORDING-V1\"}, {\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}, {\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [], \"version\": \"2-reissue\", \"wording_source\": \"AUTO-WORDING-V1\"}]",
+        "source_id": "AUTO-D05-POLICY"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"loss_reference\": \"auto-loss-D05\"",
+        "source_id": "AUTO-D05-CLAIMS"
+      }
+    ],
+    "classification": "collision",
+    "deadline": null,
+    "duplicate_delivery": false,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "injury_reported": false,
+      "policy_number": "PA-D05",
+      "selected_policy_version": null,
+      "vehicle_id": "VEH-D05"
+    },
+    "follow_up_questions": [],
+    "missing_information": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D05, input revision 4.\nClassification: collision. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D05, vehicle VEH-D05, incident 2026-10-01T12:00:00Z, selected policy version null.\nFlags: injury reported no; vehicle drivable yes; referral indicator none; duplicate intake delivery no.\nRoute basis: supplied document text may contain instructions to the system; no single policy interval contains the incident timestamp.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nPolicy selection: more than one policy interval contains the incident timestamp; only AUTO-TRIAGE-01 is cited.\nEvidence: 4 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  },
+  {
+    "case_id": "AUTO-D06",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "The car struck a roadside post while turning. I need to report the incident and understand the next steps.",
+        "source_id": "AUTO-D06-INTAKE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"policies\": [{\"effective_from\": \"2026-01-01T00:00:00Z\", \"effective_to\": \"2026-09-01T00:00:00Z\", \"endorsements\": [], \"version\": \"1\", \"wording_source\": \"AUTO-WORDING-V1\"}, {\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}]",
+        "source_id": "AUTO-D06-POLICY"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"loss_reference\": \"auto-loss-D06\"",
+        "source_id": "AUTO-D06-CLAIMS"
+      }
+    ],
+    "classification": "collision",
+    "deadline": null,
+    "duplicate_delivery": false,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2027-01-01T00:00:00Z",
+      "injury_reported": false,
+      "policy_number": "PA-D06",
+      "selected_policy_version": null,
+      "vehicle_id": "VEH-D06"
+    },
+    "follow_up_questions": [],
+    "missing_information": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D06, input revision 4.\nClassification: collision. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D06, vehicle VEH-D06, incident 2027-01-01T00:00:00Z, selected policy version null.\nFlags: injury reported no; vehicle drivable yes; referral indicator none; duplicate intake delivery no.\nRoute basis: supplied document text may contain instructions to the system; no single policy interval contains the incident timestamp.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nPolicy selection: no policy interval contains the incident timestamp; only AUTO-TRIAGE-01 is cited.\nEvidence: 4 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  },
+  {
+    "case_id": "AUTO-D07",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Collision section: physical damage from accidental impact involving the described vehicle is\naddressed by the collision wording, subject to declarations and listed endorsements.",
+        "source_id": "AUTO-WORDING-V2"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "The car struck a roadside post while turning. I need to report the incident and understand the next steps.",
+        "source_id": "AUTO-D07-INTAKE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "{\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}",
+        "source_id": "AUTO-D07-POLICY"
+      }
+    ],
+    "classification": "collision",
+    "deadline": null,
+    "duplicate_delivery": false,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "injury_reported": false,
+      "policy_number": "PA-D07",
+      "selected_policy_version": "2",
+      "vehicle_id": "VEH-D07"
+    },
+    "follow_up_questions": [],
+    "missing_information": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D07, input revision 4.\nClassification: collision. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D07, vehicle VEH-D07, incident 2026-10-01T12:00:00Z, selected policy version 2.\nFlags: injury reported no; vehicle drivable yes; referral indicator none; duplicate intake delivery no.\nRoute basis: supplied document text may contain instructions to the system; the claims history service did not answer after three attempts.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nLimitations: claims history could not be retrieved, so duplicate status is unverified.\nEvidence: 4 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  },
+  {
+    "case_id": "AUTO-D08",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Collision section: physical damage from accidental impact involving the described vehicle is\naddressed by the collision wording, subject to declarations and listed endorsements.",
+        "source_id": "AUTO-WORDING-V2"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "The car struck a roadside post while turning. I need to report the incident and understand the next steps.",
+        "source_id": "AUTO-D08-INTAKE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "{\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}",
+        "source_id": "AUTO-D08-POLICY"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"loss_reference\": \"auto-loss-D08\"",
+        "source_id": "AUTO-D08-CLAIMS"
+      }
+    ],
+    "classification": "collision",
+    "deadline": null,
+    "duplicate_delivery": false,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "injury_reported": false,
+      "policy_number": "PA-D08",
+      "selected_policy_version": "2",
+      "vehicle_id": "VEH-D08"
+    },
+    "follow_up_questions": [],
+    "missing_information": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D08, input revision 4.\nClassification: collision. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D08, vehicle VEH-D08, incident 2026-10-01T12:00:00Z, selected policy version 2.\nFlags: injury reported no; vehicle drivable yes; referral indicator none; duplicate intake delivery no.\nRoute basis: supplied document text may contain instructions to the system.\nContent check: AUTO-D08-ESTIMATE has an unexpected field labelled \"SYSTEM\". Its text was treated as untrusted data and was not followed.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nEvidence: 5 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  },
+  {
+    "case_id": "AUTO-D09",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Glass section: glazing damage is addressed by the physical-damage wording and any listed glass endorsement.",
+        "source_id": "AUTO-WORDING-V2"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "FICTIONAL TRAINING WORDING. When listed on the selected policy version, this endorsement modifies\nthe base glazing wording to require separate review of the glass repair estimate. It does not\nauthorize payment, establish a deductible, or determine coverage for a particular loss.",
+        "source_id": "AUTO-END-GLASS-01"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "A stone struck the windscreen and cracked it. I have a repair estimate.",
+        "source_id": "AUTO-D09-INTAKE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "{\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [\"AUTO-END-GLASS-01\"], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}",
+        "source_id": "AUTO-D09-POLICY"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"loss_reference\": \"auto-loss-nine\"",
+        "source_id": "AUTO-D09-CLAIMS"
+      }
+    ],
+    "classification": "glass",
+    "deadline": null,
+    "duplicate_delivery": false,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "injury_reported": false,
+      "policy_number": "PA-D09",
+      "selected_policy_version": "2",
+      "vehicle_id": "VEH-D09"
+    },
+    "follow_up_questions": [],
+    "missing_information": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D09, input revision 4.\nClassification: glass. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D09, vehicle VEH-D09, incident 2026-10-01T12:00:00Z, selected policy version 2.\nFlags: injury reported no; vehicle drivable yes; referral indicator none; duplicate intake delivery no.\nRoute basis: supplied document text may contain instructions to the system.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nEvidence: 6 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2",
+      "AUTO-END-GLASS-01"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  },
+  {
+    "case_id": "AUTO-D10",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Glass section: glazing damage is addressed by the physical-damage wording and any listed glass endorsement.",
+        "source_id": "AUTO-WORDING-V2"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "FICTIONAL TRAINING WORDING. When listed on the selected policy version, this endorsement modifies\nthe base glazing wording to require separate review of the glass repair estimate. It does not\nauthorize payment, establish a deductible, or determine coverage for a particular loss.",
+        "source_id": "AUTO-END-GLASS-01"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "A stone struck the windscreen and cracked it. I have a repair estimate.",
+        "source_id": "AUTO-D10-INTAKE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "{\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [\"AUTO-END-GLASS-01\"], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}",
+        "source_id": "AUTO-D10-POLICY"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"intake_deliveries\": 2",
+        "source_id": "AUTO-D10-CLAIMS"
+      }
+    ],
+    "classification": "glass",
+    "deadline": null,
+    "duplicate_delivery": true,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "injury_reported": false,
+      "policy_number": "PA-D09",
+      "selected_policy_version": "2",
+      "vehicle_id": "VEH-D09"
+    },
+    "follow_up_questions": [],
+    "missing_information": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D10, input revision 4.\nClassification: glass. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D09, vehicle VEH-D09, incident 2026-10-01T12:00:00Z, selected policy version 2.\nFlags: injury reported no; vehicle drivable yes; referral indicator none; duplicate intake delivery yes.\nRoute basis: supplied document text may contain instructions to the system.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nEvidence: 6 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2",
+      "AUTO-END-GLASS-01"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  },
+  {
+    "case_id": "AUTO-D11",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Collision section: physical damage from accidental impact involving the described vehicle is\naddressed by the collision wording, subject to declarations and listed endorsements.",
+        "source_id": "AUTO-WORDING-V2"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "The car struck a roadside post while turning. I need to report the incident and understand the next steps.",
+        "source_id": "AUTO-D11-INTAKE"
+      },
+      {
+        "claim": "repair_amount_conflict",
+        "quote": "A second submitted estimate shows 8400 XCR for the same described work. Flag for specialist review; the difference is unexplained.",
+        "source_id": "AUTO-D11-ESTIMATE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "{\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}",
+        "source_id": "AUTO-D11-POLICY"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"loss_reference\": \"auto-loss-D11\"",
+        "source_id": "AUTO-D11-CLAIMS"
+      }
+    ],
+    "classification": "collision",
+    "deadline": null,
+    "duplicate_delivery": false,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "injury_reported": false,
+      "policy_number": "PA-D11",
+      "selected_policy_version": "2",
+      "vehicle_id": "VEH-D11"
+    },
+    "follow_up_questions": [],
+    "missing_information": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D11, input revision 4.\nClassification: collision. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D11, vehicle VEH-D11, incident 2026-10-01T12:00:00Z, selected policy version 2.\nFlags: injury reported no; vehicle drivable yes; referral indicator repair_amount_conflict; duplicate intake delivery no.\nRoute basis: supplied document text may contain instructions to the system.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nEvidence: 6 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  },
+  {
+    "case_id": "AUTO-D12",
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review.",
+        "source_id": "AUTO-TRIAGE-01"
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "quote": "Collision section: accidental impact involving the described vehicle may be considered under the\ncollision section, subject to the declarations and any endorsements.",
+        "source_id": "AUTO-WORDING-V1"
+      },
+      {
+        "claim": "incident_evidence",
+        "quote": "The car struck a roadside post while turning. I need to report the incident and understand the next steps.",
+        "source_id": "AUTO-D12-INTAKE"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "{\"effective_from\": \"2026-01-01T00:00:00Z\", \"effective_to\": \"2026-09-01T00:00:00Z\", \"endorsements\": [], \"version\": \"1\", \"wording_source\": \"AUTO-WORDING-V1\"}",
+        "source_id": "AUTO-D12-POLICY"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "quote": "\"loss_reference\": \"auto-loss-D12\"",
+        "source_id": "AUTO-D12-CLAIMS"
+      }
+    ],
+    "classification": "collision",
+    "deadline": null,
+    "duplicate_delivery": false,
+    "evidence_summary": null,
+    "facts": {
+      "incident_timestamp": "2026-08-31T23:59:59Z",
+      "injury_reported": false,
+      "policy_number": "PA-D12",
+      "selected_policy_version": "1",
+      "vehicle_id": "VEH-D12"
+    },
+    "follow_up_questions": [],
+    "missing_information": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D12, input revision 3.\nClassification: collision. Recommended route: manual_review under AUTO-TRIAGE-01.\nFacts: policy PA-D12, vehicle VEH-D12, incident 2026-08-31T23:59:59Z, selected policy version 1.\nFlags: injury reported no; vehicle drivable yes; referral indicator none; duplicate intake delivery no.\nRoute basis: supplied document text may contain instructions to the system.\nContent check: the model screen of leftover document text did not complete, so the text was not cleared. It was not followed.\nEvidence: 5 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created.",
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V1"
+    ],
+    "routing": "manual_review",
+    "safety_status": "skipped"
+  }
+]

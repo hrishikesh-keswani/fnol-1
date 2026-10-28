@@ -1,0 +1,6 @@
+# AWS config inside the Grafana container. ./up.sh keeps credentials.json next to
+# this file refreshed from your SSO profile, so CloudWatch panels keep working for
+# the whole SSO session instead of expiring after one hour.
+[default]
+region = us-east-1
+credential_process = cat /etc/grafana/aws/credentials.json

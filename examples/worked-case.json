@@ -1,0 +1,49 @@
+[
+  {
+    "case_id": "AUTO-D01",
+    "classification": "collision",
+    "routing": "standard",
+    "policy_ids": [
+      "AUTO-TRIAGE-01",
+      "AUTO-WORDING-V2"
+    ],
+    "facts": {
+      "policy_number": "PA-D01",
+      "incident_timestamp": "2026-10-01T12:00:00Z",
+      "vehicle_id": "VEH-D01",
+      "injury_reported": false,
+      "selected_policy_version": "2"
+    },
+    "missing_information": [],
+    "deadline": null,
+    "citations": [
+      {
+        "claim": "triage_and_potential_coverage",
+        "source_id": "AUTO-TRIAGE-01",
+        "quote": "Supported losses: collision, theft, glass. Other loss types classify as unsupported and route manual_review."
+      },
+      {
+        "claim": "triage_and_potential_coverage",
+        "source_id": "AUTO-WORDING-V2",
+        "quote": "Collision section: physical damage from accidental impact involving the described vehicle is\naddressed by the collision wording, subject to declarations and listed endorsements."
+      },
+      {
+        "claim": "incident_evidence",
+        "source_id": "AUTO-D01-INTAKE",
+        "quote": "The car struck a roadside post while turning. I need to report the incident and understand the next steps."
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "source_id": "AUTO-D01-POLICY",
+        "quote": "{\"effective_from\": \"2026-09-01T00:00:00Z\", \"effective_to\": \"2027-01-01T00:00:00Z\", \"endorsements\": [], \"version\": \"2\", \"wording_source\": \"AUTO-WORDING-V2\"}"
+      },
+      {
+        "claim": "policy_or_claim_history",
+        "source_id": "AUTO-D01-CLAIMS",
+        "quote": "\"loss_reference\": \"auto-loss-D01\""
+      }
+    ],
+    "follow_up_questions": [],
+    "narrative": "Draft FNOL for the human handler. Case AUTO-D01, input revision 1.\nClassification: collision. Recommended route: standard under AUTO-TRIAGE-01.\nFacts: policy PA-D01, vehicle VEH-D01, incident 2026-10-01T12:00:00Z, selected policy version 2.\nFlags: injury reported no; vehicle drivable yes; referral indicator none; duplicate intake delivery no.\nRoute basis: no manual-review, urgency, or specialist trigger applies.\nEvidence: 5 exact citations from the named sources.\nCited wording is potentially relevant only. No coverage, liability, fraud, reserve, settlement, denial or payment decision is made here. A referral indicator is not a fraud finding. A policy-period mismatch requires human review, not automatic denial. This is a draft; a human must approve this exact draft before any record is created."
+  }
+]

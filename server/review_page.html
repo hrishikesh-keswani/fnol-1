@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pending cases · FNOL reviewer</title>
+<style>
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --ink: #14171c;
+    --muted: #5c6570;
+    --faint: #98a2b3;
+    --line: #e4e7ec;
+    --line-strong: #d0d5dd;
+    --accent: #0b6e4f;
+    --accent-hover: #095c42;
+    --danger: #b42318;
+    --danger-soft: #fef3f2;
+    --warn: #b54708;
+    --warn-soft: #fffaeb;
+    --ok: #027a48;
+    --ok-soft: #ecfdf3;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.06);
+    --radius: 12px;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); background: var(--bg); min-height: 100vh; line-height: 1.45;
+  }
+  button { font: inherit; cursor: pointer; }
+  button:disabled { cursor: not-allowed; opacity: 0.55; }
+  .shell { max-width: 920px; margin: 0 auto; padding: 28px 20px 64px; }
+  header.top {
+    display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+    gap: 16px 24px; margin-bottom: 28px;
+  }
+  .eyebrow {
+    font-size: 12px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted);
+  }
+  h1 { margin: 4px 0; font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+  .sub { margin: 0; color: var(--muted); font-size: 14px; }
+  .identity {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 12px 14px; box-shadow: var(--shadow); min-width: min(280px, 100%);
+  }
+  .identity label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+  .identity input {
+    width: 100%; font: inherit; font-size: 15px; color: var(--ink);
+    border: 1px solid var(--line-strong); border-radius: 8px; padding: 9px 11px; outline: none;
+  }
+  .identity input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(11, 110, 79, 0.12); }
+  .toolbar {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 16px;
+  }
+  .filters { display: inline-flex; gap: 4px; padding: 4px; background: #eceff3; border-radius: 10px; }
+  .filters button {
+    border: 0; background: transparent; color: var(--muted);
+    font-size: 13px; font-weight: 500; padding: 7px 12px; border-radius: 7px;
+  }
+  .filters button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .toolbar-end { display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
+  .link-button {
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink);
+    font-size: 13px; padding: 6px 10px; border-radius: 7px;
+  }
+  #list { display: grid; gap: 14px; }
+  .notice {
+    background: var(--surface); border: 1px dashed var(--line-strong); border-radius: var(--radius);
+    padding: 40px 24px; text-align: center; color: var(--muted);
+  }
+  .notice.error { border-style: solid; border-color: #fecdca; background: var(--danger-soft); color: var(--danger); }
+  .notice .link-button { margin-left: 8px; }
+  article.case {
+    background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden;
+  }
+  .case-head {
+    display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between;
+    gap: 10px 16px; padding: 18px 18px 14px; border-bottom: 1px solid var(--line);
+  }
+  .case-id { margin: 0; font-family: var(--mono); font-size: 16px; font-weight: 500; }
+  .meta { margin: 6px 0 0; font-size: 13px; color: var(--muted); }
+  .meta span + span::before { content: "·"; margin: 0 6px; color: #b0b7c3; }
+  .meta code { font-family: var(--mono); font-size: 12px; }
+  .badge {
+    display: inline-flex; font-size: 12px; font-weight: 500;
+    padding: 4px 9px; border-radius: 999px; border: 1px solid transparent;
+  }
+  .badge.pending { background: var(--warn-soft); color: var(--warn); border-color: #fedf89; }
+  .badge.approved { background: var(--ok-soft); color: var(--ok); border-color: #a6f4c5; }
+  .badge.rejected { background: var(--danger-soft); color: var(--danger); border-color: #fecdca; }
+  .badge.other { background: #f2f4f7; color: var(--muted); border-color: var(--line); }
+  .case-body { padding: 16px 18px 18px; display: grid; gap: 12px; }
+  .panel { border: 1px solid var(--line); border-radius: 10px; background: #fcfcfd; }
+  .panel h3 {
+    display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px;
+    margin: 0; padding: 10px 12px; font-size: 12px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--line); background: #fff; border-radius: 10px 10px 0 0;
+  }
+  .panel-note { font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--faint); }
+  .panel-body { padding: 12px 16px 14px; font-size: 14px; line-height: 1.55; }
+  .panel-body p { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .panel-body p:last-child { margin-bottom: 0; }
+  .panel-body .label { font-weight: 600; }
+  .panel-body.empty { color: var(--faint); font-style: italic; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 18px 18px; }
+  .actions button {
+    font-size: 14px; font-weight: 600; border-radius: 8px; padding: 9px 16px;
+    border: 1px solid transparent; transition: background 0.12s ease, border-color 0.12s ease;
+  }
+  .btn-accept { background: var(--accent); color: #fff; }
+  .btn-accept:hover:not(:disabled) { background: var(--accent-hover); }
+  .btn-reject { background: #fff; color: var(--danger); border-color: #fecdca; }
+  .btn-reject:hover:not(:disabled) { background: var(--danger-soft); border-color: #f97066; }
+  .toast {
+    position: fixed; right: 16px; bottom: 16px; z-index: 20; max-width: min(420px, calc(100vw - 32px));
+    background: var(--ink); color: #fff; font-size: 13px; font-weight: 500;
+    padding: 10px 14px; border-radius: 8px; box-shadow: var(--shadow);
+    opacity: 0; transform: translateY(8px); pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Harborlight claims</div>
+      <h1 id="heading">Pending cases</h1>
+      <p class="sub">Read the exact draft on each review, then accept or reject it.</p>
+    </div>
+    <div class="identity">
+      <label for="name">Reviewer name</label>
+      <input id="name" placeholder="Your name" autocomplete="name">
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="filters" role="group" aria-label="Show cases">
+      <button type="button" data-filter="pending" aria-pressed="true">Pending</button>
+      <button type="button" data-filter="all" aria-pressed="false">All</button>
+      <button type="button" data-filter="decided" aria-pressed="false">Decided</button>
+    </div>
+    <div class="toolbar-end">
+      <span id="count"></span>
+      <button type="button" class="link-button" id="refresh">Refresh</button>
+    </div>
+  </div>
+
+  <div id="list"><div class="notice">Loading cases…</div></div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+const NAME_KEY = "fnol-reviewer-name";
+const HEADINGS = { pending: "Pending cases", all: "All cases", decided: "Decided cases" };
+const LABEL = /^([A-Z][A-Za-z ]{1,40}):\s/;
+
+const state = { rows: [], loaded: false, error: null, filter: "pending", busy: new Set(), loadSeq: 0 };
+const nameInput = document.getElementById("name");
+const list = document.getElementById("list");
+const filterButtons = document.querySelectorAll(".filters button");
+let toastTimer;
+
+function el(tag, props, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props || {})) {
+    if (value == null || value === false) continue;
+    if (key === "class") node.className = value;
+    else if (key === "onclick") node.onclick = value;
+    else node.setAttribute(key, value === true ? "" : value);
+  }
+  for (const child of children.flat()) {
+    if (child != null && child !== false) node.append(child);
+  }
+  return node;
+}
+
+function requestHeaders(reviewer) {
+  const headers = { "X-Fnol-Roles": "Claims.Reviewer" };
+  if (reviewer) headers["X-Fnol-Reviewer"] = reviewer;
+  return headers;
+}
+
+function toast(message) {
+  const node = document.getElementById("toast");
+  node.textContent = message;
+  node.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => node.classList.remove("show"), 4000);
+}
+
+function describeFailure(status, body) {
+  const code = body && body.error;
+  if (code === "review_not_pending") return "it was already decided";
+  if (code === "forbidden") return "the Claims.Reviewer role is required";
+  return code ? String(code).replace(/_/g, " ") : "HTTP " + status;
+}
+
+function narrativeLines(text) {
+  return text.split("\n").filter((line) => line.trim()).map((line) => {
+    const match = line.match(LABEL);
+    if (!match) return el("p", {}, line);
+    return el("p", {}, el("span", { class: "label" }, match[1] + ":"), line.slice(match[1].length + 1));
+  });
+}
+
+function panel(title, note, text, labelled) {
+  const body = text
+    ? el("div", { class: "panel-body" }, labelled ? narrativeLines(text) : el("p", {}, text))
+    : el("div", { class: "panel-body empty" }, "None.");
+  return el("section", { class: "panel" },
+    el("h3", {}, title, note ? el("span", { class: "panel-note" }, note) : null),
+    body);
+}
+
+function badge(status) {
+  const kind = ["pending", "approved", "rejected"].includes(status) ? status : "other";
+  return el("span", { class: "badge " + kind }, status || "unknown");
+}
+
+function card(row) {
+  const pending = row.status === "pending";
+  const busy = state.busy.has(row.review_id);
+  const meta = [
+    "Review " + row.review_id,
+    row.draft_hash ? el("code", { title: row.draft_hash }, "draft " + row.draft_hash.slice(0, 12)) : null,
+    row.reviewer ? "decided by " + row.reviewer : null,
+    row.draft_status ? "analyst status " + row.draft_status : null,
+    row.outcome && row.outcome !== row.draft_status ? "outcome " + row.outcome : null,
+  ].filter(Boolean).map((bit) => el("span", {}, bit));
+  const route = (row.classification || "unclassified") + " · route " + (row.routing || "none");
+
+  return el("article", { class: "case" },
+    el("div", { class: "case-head" },
+      el("div", {},
+        el("h2", { class: "case-id" }, row.case_id || "unknown case"),
+        el("p", { class: "meta" }, meta),
+        el("p", { class: "meta" }, route)),
+      badge(row.status)),
+    el("div", { class: "case-body" },
+      panel("Draft narrative", "exact text on this review", row.narrative, true),
+      row.evidence_summary ? panel("Evidence summary", "part of the draft", row.evidence_summary, false) : null,
+      panel("Gemma summary", "reference only, not part of the draft", row.shadow_narrative, false)),
+    pending
+      ? el("div", { class: "actions" },
+          el("button", { type: "button", class: "btn-accept", disabled: busy, onclick: () => decide(row, "approve") },
+            busy ? "Saving…" : "Accept"),
+          el("button", { type: "button", class: "btn-reject", disabled: busy, onclick: () => decide(row, "reject") },
+            "Reject"))
+      : null);
+}
+
+function filteredRows() {
+  if (state.filter === "pending") return state.rows.filter((r) => r.status === "pending");
+  if (state.filter === "decided") return state.rows.filter((r) => r.status !== "pending");
+  return state.rows;
+}
+
+function render() {
+  const heading = HEADINGS[state.filter];
+  document.getElementById("heading").textContent = heading;
+  document.title = heading + " · FNOL reviewer";
+  filterButtons.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.filter === state.filter)));
+
+  const fresh = state.loaded && !state.error;
+  const pendingCount = state.rows.filter((r) => r.status === "pending").length;
+  document.getElementById("count").textContent =
+    fresh ? `${pendingCount} pending · ${state.rows.length} cases` : "";
+
+  if (state.error) {
+    list.replaceChildren(el("div", { class: "notice error" },
+      "Could not load the queue: " + state.error + ".",
+      el("button", { type: "button", class: "link-button", onclick: load }, "Retry")));
+    return;
+  }
+  if (!state.loaded) {
+    list.replaceChildren(el("div", { class: "notice" }, "Loading cases…"));
+    return;
+  }
+  const rows = filteredRows();
+  if (!rows.length) {
+    list.replaceChildren(el("div", { class: "notice" },
+      state.rows.length ? "No cases match this filter." : "No cases in the review queue."));
+    return;
+  }
+  list.replaceChildren(...rows.map(card));
+}
+
+async function load() {
+  const seq = ++state.loadSeq;
+  let rows = null;
+  let error = null;
+  try {
+    const response = await fetch("/v1/queue", { headers: requestHeaders(), cache: "no-store" });
+    const body = await response.json().catch(() => null);
+    if (!response.ok) error = describeFailure(response.status, body);
+    else if (!Array.isArray(body)) error = "the server sent an unexpected response";
+    else rows = body;
+  } catch (err) {
+    error = "network error";
+  }
+  if (seq !== state.loadSeq) return;
+  if (rows) {
+    state.rows = rows;
+    state.loaded = true;
+  }
+  state.error = error;
+  render();
+}
+
+async function decide(row, act) {
+  const reviewer = nameInput.value.trim();
+  if (!reviewer) {
+    nameInput.focus();
+    toast("Enter your name first.");
+    return;
+  }
+  if (state.busy.has(row.review_id)) return;
+  const verb = act === "approve" ? "Accept" : "Reject";
+  if (!window.confirm(`${verb} ${row.case_id} as ${reviewer}?`)) return;
+
+  state.busy.add(row.review_id);
+  render();
+  let message;
+  try {
+    const response = await fetch("/v1/" + act + "/" + encodeURIComponent(row.review_id), {
+      method: "POST",
+      headers: requestHeaders(reviewer),
+    });
+    const body = await response.json().catch(() => null);
+    message = response.ok
+      ? `${verb}ed ${row.case_id}.`
+      : `Could not ${verb.toLowerCase()} ${row.case_id}: ${describeFailure(response.status, body)}.`;
+  } catch (err) {
+    message = `Network error. ${row.case_id} may or may not be saved; the list has been refreshed.`;
+  }
+  toast(message);
+  await load();
+  state.busy.delete(row.review_id);
+  render();
+}
+
+try {
+  nameInput.value = localStorage.getItem(NAME_KEY) || "";
+  nameInput.addEventListener("input", () => localStorage.setItem(NAME_KEY, nameInput.value.trim()));
+} catch (err) {
+  // Storage can be blocked; the name field still works for this visit.
+}
+
+filterButtons.forEach((button) => {
+  button.onclick = () => {
+    state.filter = button.dataset.filter;
+    render();
+  };
+});
+document.getElementById("refresh").onclick = load;
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+# Team-local stack. Bind published ports to loopback only.
+# Dev Containers use .devcontainer/; this compose is for CLI-only Docker workflows.
+# Postgres is the shared state database. The mock still binds inside the compose
+# network and is published only on the host loopback.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: fnol
+      POSTGRES_PASSWORD: fnol
+      POSTGRES_DB: fnol
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fnol -d fnol"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - fnol-pgdata:/var/lib/postgresql/data
+  mock:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    working_dir: /workspaces/auto-fnol-participant
+    volumes:
+      - .:/workspaces/auto-fnol-participant
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      bash -lc "uv sync --locked --group postgres &&
+      uv run --locked --group postgres python tools/migrate.py &&
+      uv run --locked --group postgres python tools/runtime.py serve --host 0.0.0.0 --port 8767"
+    ports:
+      - "127.0.0.1:8767:8767"
+    environment:
+      FNOL_DATABASE_URL: postgresql://fnol:fnol@postgres:5432/fnol
+      FNOL_PG_NAMESPACE: shared
+      FNOL_AI_ENABLED: "false"
+
+volumes:
+  fnol-pgdata:

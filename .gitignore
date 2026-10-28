@@ -1,0 +1,17 @@
+.venv/
+.state/
+__pycache__/
+.coverage
+coverage.json
+htmlcov/
+.pytest_cache/
+submissions/
+reports/*
+!reports/score-report.json
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+deploy/azure/team.shared.env
+deploy/grafana/.tunnel.*
+deploy/grafana/.creds.*
+deploy/grafana/aws/credentials.json*

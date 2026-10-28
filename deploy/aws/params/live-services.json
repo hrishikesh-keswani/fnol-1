@@ -1,0 +1,50 @@
+[
+  {
+    "ParameterKey": "DatabaseEndpoint",
+    "ParameterValue": "fnol-postgres.cc92c6i402lj.us-east-1.rds.amazonaws.com"
+  },
+  {
+    "ParameterKey": "ImageTag",
+    "ParameterValue": "1.3.4"
+  },
+  {
+    "ParameterKey": "StateBackend",
+    "ParameterValue": "postgres"
+  },
+  {
+    "ParameterKey": "PgNamespace",
+    "ParameterValue": "shared"
+  },
+  {
+    "ParameterKey": "DatabaseName",
+    "ParameterValue": "fnol"
+  },
+  {
+    "ParameterKey": "MountEfs",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "EfsFileSystemId",
+    "ParameterValue": "fs-035b11da15aa05ed6"
+  },
+  {
+    "ParameterKey": "AppSubnetA",
+    "ParameterValue": "subnet-00eea3b5317c5e492"
+  },
+  {
+    "ParameterKey": "AppSubnetB",
+    "ParameterValue": "subnet-02cadb526cc74c182"
+  },
+  {
+    "ParameterKey": "TaskSecurityGroupId",
+    "ParameterValue": "sg-0902a6085d45388f5"
+  },
+  {
+    "ParameterKey": "DnsNamespace",
+    "ParameterValue": "fnol.internal"
+  },
+  {
+    "ParameterKey": "ManageServices",
+    "ParameterValue": "false"
+  }
+]
